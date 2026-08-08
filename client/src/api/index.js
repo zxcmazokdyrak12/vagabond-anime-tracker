@@ -17,15 +17,30 @@ export const login    = (data) => api.post('/auth/login', data)
 export const getMe    = ()     => api.get('/auth/me')
 
 // Anime list
-export const getList    = ()           => api.get('/list')
-export const addAnime   = (data)       => api.post('/list', data)
+export const getList     = ()          => api.get('/list')
+export const addAnime    = (data)      => api.post('/list', data)
 export const updateAnime = (id, data)  => api.patch(`/list/${id}`, data)
 export const deleteAnime = (id)        => api.delete(`/list/${id}`)
-export const getStats   = ()           => api.get('/stats')
+export const getStats    = ()          => api.get('/stats')
 
-// Jikan API — поиск аниме (прямо с фронта, это публичный API)
+// Anime External Search / Details (через прокси нашего бэкенда)
 export const searchAnime = (query) =>
-  axios.get(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(query)}&limit=12`)
+  api.get(`/api/anime/search?q=${encodeURIComponent(query)}`)
 
 export const getAnimeById = (id) =>
-  axios.get(`https://api.jikan.moe/v4/anime/${id}`)
+  api.get(`/api/anime/${id}`)
+
+export const getTopAnime = () =>
+  axios.get(`https://api.jikan.moe/v4/top/anime?limit=10`)
+
+export const getSeasonNow = () =>
+  axios.get(`https://api.jikan.moe/v4/seasons/now?limit=8`)
+
+export const getAnimeFull = (id) =>
+  axios.get(`https://api.jikan.moe/v4/anime/${id}/full`)
+
+export const getAnimeCharacters = (id) =>
+  axios.get(`https://api.jikan.moe/v4/anime/${id}/characters`)
+
+export const getAnimeEpisodes = (id) =>
+  axios.get(`https://api.jikan.moe/v4/anime/${id}/episodes`)

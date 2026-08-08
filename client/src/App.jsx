@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { getMe } from './api'
 import AuthPage from './pages/AuthPage'
 import TrackerPage from './pages/TrackerPage'
+import AnimeDetailPage from './pages/AnimeDetailPage'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -34,5 +36,13 @@ export default function App() {
   )
 
   if (!user) return <AuthPage onLogin={handleLogin} />
-  return <TrackerPage user={user} onLogout={handleLogout} />
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<TrackerPage user={user} onLogout={handleLogout} />} />
+        <Route path="/anime/:id" element={<AnimeDetailPage user={user} onLogout={handleLogout} />} />
+      </Routes>
+    </BrowserRouter>
+  )
 }
