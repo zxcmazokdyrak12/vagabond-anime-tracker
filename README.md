@@ -1,3 +1,26 @@
+## 🖼️ Preview
+
+### 🏯 Core Interface & Layouts
+
+<table width="100%">
+  <tr>
+    <td width="50%" align="center"><b>The Gate Login (Secret Seal)</b></td>
+    <td width="50%" align="center"><b>The Gate Homepage (Main Dashboard)</b></td>
+  </tr>
+  <tr>
+    <td><img src="client/public/gate_login.png" width="100%"></td>
+    <td><img src="client/public/gate_home.png.png" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Anime Details View (Bleach Example)</b></td>
+    <td align="center"><b>My Scrolls (Interactive Tracker List)</b></td>
+  </tr>
+  <tr>
+    <td><img src="client/public/anime_details.png.png" width="100%"></td>
+    <td><img src="client/public/my_scrolls.png.png" width="100%"></td>
+  </tr>
+</table>
+
 # ⚔️ VAGABOND TRACKER (アニメ追跡)
 
 > A cinematic, avant-garde Anime Tracker inspired by the meditative and brutal ink-wash (*sumi-e*) aesthetic of Takehiko Inoue's legendary manga **"Vagabond"**. This is not just a standard catalog; it is an interactive web experience wrapped around the philosophy of a warrior's path.
