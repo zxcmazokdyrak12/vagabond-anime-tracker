@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API = axios.create({ baseURL: 'https://vagabond-anime-tracker.onrender.com' });
+const api = axios.create({ baseURL: 'https://vagabond-anime-tracker.onrender.com' });
 
 // Автоматически добавляем токен к каждому запросу
 api.interceptors.request.use(config => {
