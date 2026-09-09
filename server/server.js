@@ -48,6 +48,8 @@ async function initDB() {
   console.log('DB ready')
 }
 
+const app = express()
+
 app.use(cors())
 
 app.use(bodyParser.json())
