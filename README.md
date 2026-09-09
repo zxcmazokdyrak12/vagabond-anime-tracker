@@ -16,8 +16,8 @@
     <td align="center"><b>My Scrolls (Interactive Tracker List)</b></td>
   </tr>
   <tr>
-    <td><img src="client/public/anime_details.png." width="100%"></td>
-    <td><img src="client/public/my_scrolls.png." width="100%"></td>
+    <td><img src="client/public/anime_details.png.png" width="100%"></td>
+    <td><img src="client/public/my_scrolls.png.png" width="100%"></td>
   </tr>
 </table>
 
