@@ -50,9 +50,15 @@ async function initDB() {
 
 const app = express()
 app.use(cors({
-  origin: ['http://localhost:5173', 'https://vercel.app'],
-  credentials: true
+  origin: [
+    'http://localhost:5173', 
+    'https://vercel.app'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+app.options('*', cors());
 
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
