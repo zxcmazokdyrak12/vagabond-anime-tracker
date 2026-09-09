@@ -62,9 +62,9 @@ app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   // Перехватываем предзапрос OPTIONS и принудительно возвращаем статус 200 вместо 204
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
+ if (req.method === 'OPTIONS') {
+  return res.status(200).end(); 
+}
 
   next();
 });
