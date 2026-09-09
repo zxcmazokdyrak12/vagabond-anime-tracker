@@ -49,16 +49,25 @@ async function initDB() {
 }
 
 const app = express()
-app.use(cors({
-  origin: [
-    'http://localhost:5173', 
-    'https://vercel.app'
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-app.options('*', cors());
+app.use((req, res, next) => {
+  const allowedOrigins = ['http://localhost:5173', 'https://vercel.app'];
+  const origin = req.headers.origin;
+  
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Перехватываем предзапрос OPTIONS и принудительно возвращаем статус 200 вместо 204
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
 
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
