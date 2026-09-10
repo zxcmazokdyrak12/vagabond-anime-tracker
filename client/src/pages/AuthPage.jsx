@@ -95,7 +95,7 @@ export default function AuthPage({ onLogin }) {
         <div style={{ display:'flex', flexDirection:'column', gap:'24px' }}>
           {mode === 'register' && (
             <div>
-              <label style={{ fontSize:'10px', color:'#555', letterSpacing:'3px' }}>WARRIOR NAME</label>
+              <label style={{ fontSize:'10px', color:'#faf9f9', letterSpacing:'3px' }}>WARRIOR NAME</label>
               <input className="ink-input" placeholder="username" value={form.username} onChange={e => setForm(p => ({...p, username: e.target.value}))} />
             </div>
           )}
@@ -138,7 +138,7 @@ export default function AuthPage({ onLogin }) {
         <div style={{ textAlign:'center', marginTop:'24px' }}>
           <button
             onClick={() => { setMode(m => m === 'login' ? 'register' : 'login'); setError('') }}
-            style={{ background:'none', border:'none', color:'#555', fontSize:'11px', cursor:'pointer', letterSpacing:'2px', fontFamily:'Noto Serif JP, serif' }}
+            style={{ background:'none', border:'none', color:'#e1dede', fontSize:'11px', cursor:'pointer', letterSpacing:'2px', fontFamily:'Noto Serif JP, serif' }}
           >
             {mode === 'login' ? 'NEW WARRIOR? BEGIN HERE' : 'ALREADY WALKING THE PATH?'}
           </button>
