@@ -1,19 +1,16 @@
 import { Router } from 'express'
 import { asyncHandler } from '../lib/auth.js'
 import type { CachedClient } from '../lib/cachedClient.js'
-import type { Http } from '../lib/http.js'
+import { UpstreamError } from '../lib/http.js'
 import { isPositiveInt } from '../lib/validation.js'
+import {
+  ANILIST_URL, DETAIL_QUERY, SEASON_QUERY, TOP_QUERY, currentSeason, toAnime, toCharacters, toEpisodes, unwrap,
+  type AniMedia,
+} from '../lib/anilist.js'
 
 const JIKAN = 'https://api.jikan.moe/v4'
-const HOUR = 60 * 60 * 1000
-
-interface AniListMedia {
-  idMal: number | null
-  title: { romaji: string | null; english: string | null; native: string | null }
-  coverImage: { large: string | null }
-  episodes: number | null
-  averageScore: number | null
-}
+const MIN = 60 * 1000
+const HOUR = 60 * MIN
 
 const SEARCH_QUERY = `
   query ($search: String) {
@@ -29,50 +26,63 @@ const SEARCH_QUERY = `
   }
 `
 
-/**
- * Все запросы к каталогам аниме идут через сервер: так работает кеш,
- * очередь под лимиты Jikan и никакие внешние API не дёргаются из браузера.
- */
-export function animeRouter({ jikan, http }: { jikan: CachedClient; http: Http }) {
-  const router = Router()
-  const searchCache = new Map<string, { data: unknown; expires: number }>()
+interface SearchMedia {
+  idMal: number | null
+  title: { romaji: string | null; english: string | null; native: string | null }
+  coverImage: { large: string | null }
+  episodes: number | null
+  averageScore: number | null
+}
 
-  // Поиск: AniList (быстрый, без жёстких лимитов) → запасной Jikan
+type Page = { Page: { media: AniMedia[] } }
+
+/** Сначала основной источник; если он лежит (не 404) — запасной */
+async function withFallback<T>(primary: () => Promise<T>, fallback: () => Promise<T>, label: string): Promise<T> {
+  try {
+    return await primary()
+  } catch (err) {
+    if (err instanceof UpstreamError && err.status === 404) throw err
+    console.error(`${label}: AniList failed (${(err as Error).message}), trying Jikan`)
+    return fallback()
+  }
+}
+
+/**
+ * Каталог аниме. Основной источник — AniList: Jikan с серверов Render
+ * недоступен (соединение обрывается по таймауту), поэтому он только запасной.
+ * Всё кешируется и идёт через очередь, браузер внешние API не дёргает.
+ */
+export function animeRouter({ anilist, jikan }: { anilist: CachedClient; jikan: CachedClient }) {
+  const router = Router()
+
   router.get(
     '/search',
     asyncHandler(async (req, res) => {
       const q = String(req.query.q ?? '').trim().slice(0, 100)
       if (!q) return res.json({ data: [] })
 
-      const key = q.toLowerCase()
-      const hit = searchCache.get(key)
-      if (hit && hit.expires > Date.now()) return res.json(hit.data)
-
-      let payload: unknown
-      try {
-        const r = await http.post('https://graphql.anilist.co', { query: SEARCH_QUERY, variables: { search: q } })
-        if (r.status !== 200) throw new Error(`AniList ${r.status}`)
-        const media = (r.data as { data: { Page: { media: AniListMedia[] } } }).data.Page.media
-        // Берём MAL id (idMal), а не id AniList: страница тайтла и список работают на MAL id
-        payload = {
-          data: media
-            .filter((m) => m.idMal)
-            .map((m) => ({
-              mal_id: m.idMal,
-              title: m.title.romaji || m.title.english || m.title.native,
-              title_english: m.title.english,
-              images: { jpg: { image_url: m.coverImage.large } },
-              episodes: m.episodes,
-              score: m.averageScore ? m.averageScore / 10 : null,
-            })),
-        }
-      } catch (err) {
-        console.error('AniList search failed, falling back to Jikan:', (err as Error).message)
-        payload = await jikan.get(`${JIKAN}/anime?q=${encodeURIComponent(q)}&limit=12&sfw=true`, 10 * 60 * 1000)
-      }
-
-      searchCache.set(key, { data: payload, expires: Date.now() + 10 * 60 * 1000 })
-      if (searchCache.size > 300) searchCache.delete(searchCache.keys().next().value!)
+      const payload = await withFallback(
+        async () => {
+          const data = unwrap<{ Page: { media: SearchMedia[] } }>(
+            await anilist.post(ANILIST_URL, { query: SEARCH_QUERY, variables: { search: q.toLowerCase() } }, 10 * MIN)
+          )
+          // Берём MAL id (idMal), а не id AniList: страница тайтла и список работают на MAL id
+          return {
+            data: data.Page.media
+              .filter((m) => m.idMal)
+              .map((m) => ({
+                mal_id: m.idMal,
+                title: m.title.romaji || m.title.english || m.title.native,
+                title_english: m.title.english,
+                images: { jpg: { image_url: m.coverImage.large } },
+                episodes: m.episodes,
+                score: m.averageScore ? m.averageScore / 10 : null,
+              })),
+          }
+        },
+        () => jikan.get(`${JIKAN}/anime?q=${encodeURIComponent(q)}&limit=12&sfw=true`, 10 * MIN),
+        'search'
+      )
       res.json(payload)
     })
   )
@@ -80,32 +90,62 @@ export function animeRouter({ jikan, http }: { jikan: CachedClient; http: Http }
   router.get(
     '/top',
     asyncHandler(async (_req, res) => {
-      res.json(await jikan.get(`${JIKAN}/top/anime?limit=10`, 6 * HOUR))
+      const payload = await withFallback(
+        async () => {
+          const data = unwrap<Page>(await anilist.post(ANILIST_URL, { query: TOP_QUERY }, 6 * HOUR))
+          const media = data.Page.media.filter((m) => m.idMal).slice(0, 10)
+          // rank — место в нашем топе, а не в общем рейтинге AniList
+          return { data: media.map((m, i) => ({ ...toAnime(m), rank: i + 1 })) }
+        },
+        () => jikan.get(`${JIKAN}/top/anime?limit=10`, 6 * HOUR),
+        'top'
+      )
+      res.json(payload)
     })
   )
 
   router.get(
     '/season',
     asyncHandler(async (_req, res) => {
-      res.json(await jikan.get(`${JIKAN}/seasons/now?limit=12&sfw=true`, 3 * HOUR))
+      const payload = await withFallback(
+        async () => {
+          const variables = currentSeason()
+          const data = unwrap<Page>(await anilist.post(ANILIST_URL, { query: SEASON_QUERY, variables }, 3 * HOUR))
+          return { data: data.Page.media.filter((m) => m.idMal).slice(0, 12).map(toAnime) }
+        },
+        () => jikan.get(`${JIKAN}/seasons/now?limit=12&sfw=true`, 3 * HOUR),
+        'season'
+      )
+      res.json(payload)
     })
   )
 
-  // /api/anime/:id, /api/anime/:id/characters, /api/anime/:id/episodes
-  const SUBRESOURCES: Record<string, { path: string; ttl: number }> = {
-    '': { path: 'full', ttl: 12 * HOUR },
-    characters: { path: 'characters', ttl: 24 * HOUR },
-    episodes: { path: 'episodes', ttl: 6 * HOUR },
-  }
+  // /api/anime/:id, /:id/characters, /:id/episodes — один запрос к AniList на всё, дальше из кеша
+  const SUBRESOURCES = {
+    '': { jikan: 'full', map: (m: AniMedia) => toAnime(m) },
+    characters: { jikan: 'characters', map: toCharacters },
+    episodes: { jikan: 'episodes', map: toEpisodes },
+  } as const
 
   router.get(
     '/:id/:sub?',
     asyncHandler(async (req, res) => {
       const id = Number(req.params.id)
-      const sub = SUBRESOURCES[req.params.sub ?? '']
+      const sub = SUBRESOURCES[(req.params.sub ?? '') as keyof typeof SUBRESOURCES]
       // id подставляется в URL внешнего API — пропускаем только числа
       if (!isPositiveInt(id) || !sub) return res.status(400).json({ error: 'Invalid anime id' })
-      res.json(await jikan.get(`${JIKAN}/anime/${id}/${sub.path}`, sub.ttl))
+
+      const payload = await withFallback(
+        async () => {
+          const data = unwrap<{ Media: AniMedia }>(
+            await anilist.post(ANILIST_URL, { query: DETAIL_QUERY, variables: { idMal: id } }, 12 * HOUR)
+          )
+          return { data: sub.map(data.Media) }
+        },
+        () => jikan.get(`${JIKAN}/anime/${id}/${sub.jikan}`, 12 * HOUR),
+        `anime ${id}`
+      )
+      res.json(payload)
     })
   )
 

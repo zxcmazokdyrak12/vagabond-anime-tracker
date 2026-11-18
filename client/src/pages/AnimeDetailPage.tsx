@@ -11,7 +11,7 @@ import type { Anime, Character, Episode, ListEntry, User } from '../types'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-// Сервер сам повторяет запросы к Jikan; здесь — запасной повтор на случай холодного старта Render
+// Сервер сам повторяет запросы к каталогам; здесь — запасной повтор на случай холодного старта Render
 async function fetchWithRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
   for (let i = 1; ; i++) {
     try {
@@ -141,7 +141,7 @@ export default function AnimeDetailPage({ user, onLogout }: { user: User; onLogo
           >
             {error === 'missing'
               ? 'The link may be broken or the entry was removed.'
-              : 'Jikan, the MyAnimeList API, isn’t responding. It often recovers within a minute.'}
+              : 'The anime catalogue isn’t responding. It usually recovers within a minute.'}
           </Notice>
         ) : anime ? (
           <article>
@@ -152,7 +152,19 @@ export default function AnimeDetailPage({ user, onLogout }: { user: User; onLogo
               </div>
 
               <div>
-                {anime.airing && <p className="airing">Airing now</p>}
+                {anime.airing && (
+                  <p className="airing">
+                    {anime.next_airing
+                      ? `Episode ${anime.next_airing.episode} airs ${new Date(anime.next_airing.at).toLocaleString('en-GB', {
+                          weekday: 'short',
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}`
+                      : 'Airing now'}
+                  </p>
+                )}
                 <h1 className="detail-hero__title">{anime.title_english || anime.title}</h1>
                 {anime.title_english && anime.title_english !== anime.title && (
                   <p className="muted" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>{anime.title}</p>
@@ -255,7 +267,7 @@ export default function AnimeDetailPage({ user, onLogout }: { user: User; onLogo
                       ['Source', anime.source],
                       ['Episode length', anime.duration],
                       ['Rating', anime.rating],
-                      ['Members', anime.members?.toLocaleString('en')],
+                      ['In users’ lists', anime.members?.toLocaleString('en')],
                     ]
                       .filter(([, v]) => v)
                       .map(([k, v]) => (

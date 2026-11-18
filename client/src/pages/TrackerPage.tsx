@@ -78,7 +78,7 @@ export default function TrackerPage({ user, onLogout }: { user: User; onLogout: 
     discoverInFlight.current = true
     ;(async () => {
       try {
-        // Очередь под лимиты Jikan и кеш — на сервере, поэтому можно параллельно
+        // Очередь под лимиты каталогов и кеш — на сервере, поэтому можно параллельно
         const [topRes, seasonRes] = await Promise.all([getTopAnime(), getSeasonNow()])
         setDiscover({ status: 'done', top: topRes.data.data.slice(0, 10), season: seasonRes.data.data.slice(0, 12) })
       } catch (err) {

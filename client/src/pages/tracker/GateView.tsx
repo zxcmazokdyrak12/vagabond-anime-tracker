@@ -69,7 +69,7 @@ function GateHero({ items, inListIds, stampId, onAdd }: AddProps & { items: Anim
 
           <div className="gate-hero__body">
             <p className="gate-hero__rank">
-              <strong>No. {anime.rank || index + 1}</strong> of all anime on MyAnimeList
+              <strong>No. {anime.rank || index + 1}</strong> among the highest rated anime
             </p>
             <h1 className="gate-hero__title">
               <Link to={`/anime/${anime.mal_id}`} style={{ textDecoration: 'none' }}>
@@ -148,7 +148,7 @@ export default function GateView({
         title="The catalogue didn't load"
         action={<button type="button" className="btn btn--ghost" onClick={onRetry}>Try again</button>}
       >
-        Jikan, the MyAnimeList API, isn't responding. It often recovers within a minute.
+        The anime catalogue isn't responding. It usually recovers within a minute.
       </Notice>
     )
   }

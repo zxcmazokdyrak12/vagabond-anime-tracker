@@ -76,3 +76,23 @@ describe('cached client', () => {
     expect(client.size).toBe(2)
   })
 })
+
+describe('cached client: network failures', () => {
+  it('retries when there was no response at all, then reports the source unreachable', async () => {
+    const { http, calls } = fakeHttp([[/./, () => ({ status: 0, data: null })]])
+    const client = createCachedClient({ http, minIntervalMs: 0, sleep: async () => {} })
+
+    await expect(client.get('https://x/down', 1000)).rejects.toMatchObject({ status: 0 })
+    expect(calls).toHaveLength(3)
+  })
+
+  it('caches POST requests by body', async () => {
+    const { http, calls } = fakeHttp([[/./, (_u, body) => ({ status: 200, data: body })]])
+    const client = createCachedClient({ http, minIntervalMs: 0, sleep: async () => {} })
+
+    await client.post('https://x/gql', { q: 1 }, 1000)
+    await client.post('https://x/gql', { q: 1 }, 1000)
+    await client.post('https://x/gql', { q: 2 }, 1000)
+    expect(calls).toHaveLength(2)
+  })
+})

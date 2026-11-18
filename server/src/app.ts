@@ -14,12 +14,15 @@ export interface AppDeps {
   config: Pick<Config, 'jwtSecret' | 'clientOrigins' | 'authAttemptsPer15Min'>
   /** Внешний HTTP; в тестах подменяется фейком */
   http?: Http
-  jikanIntervalMs?: number
+  /** Пауза между запросами к внешним каталогам; в тестах 0 */
+  upstreamIntervalMs?: number
 }
 
-export function createApp({ db, config, http = axiosHttp, jikanIntervalMs }: AppDeps) {
+export function createApp({ db, config, http = axiosHttp, upstreamIntervalMs }: AppDeps) {
   const app = express()
-  const jikan = createCachedClient({ http, minIntervalMs: jikanIntervalMs })
+  // AniList — основной каталог (до 90 запросов в минуту), Jikan — запасной, одна попытка
+  const anilist = createCachedClient({ http, minIntervalMs: upstreamIntervalMs ?? 700, retries: 2 })
+  const jikan = createCachedClient({ http, minIntervalMs: upstreamIntervalMs ?? 400, retries: 1 })
 
   app.set('trust proxy', 1) // Render стоит за прокси — нужен реальный IP для rate limit
   app.disable('x-powered-by')
@@ -31,7 +34,7 @@ export function createApp({ db, config, http = axiosHttp, jikanIntervalMs }: App
     res.send('ok')
   })
   app.use('/auth', authRouter({ db, jwtSecret: config.jwtSecret, attemptsPer15Min: config.authAttemptsPer15Min }))
-  app.use('/api/anime', animeRouter({ jikan, http }))
+  app.use('/api/anime', animeRouter({ anilist, jikan }))
   app.use('/', listRouter({ db, jwtSecret: config.jwtSecret }))
 
   app.use((_req, res) => {
