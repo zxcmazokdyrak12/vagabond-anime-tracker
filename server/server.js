@@ -1,17 +1,32 @@
 import express from 'express'
 import cors from 'cors'
 import pg from 'pg'
-import bodyParser from 'body-parser'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import 'dotenv/config'
 import axios from 'axios'
 
+// Без секрета JWT сервер не должен стартовать вообще
+if (!process.env.JWT_SECRET || !process.env.DATABASE_URL) {
+  console.error('JWT_SECRET и DATABASE_URL обязательны — см. server/.env.example')
+  process.exit(1)
+}
+
+const STATUSES = ['watching', 'completed', 'planning', 'dropped']
+
+// ── Валидация ────────────────────────────────────
+const isPositiveInt = (v) => Number.isInteger(v) && v > 0
+const isValidScore = (v) => v === null || (Number.isInteger(v) && v >= 1 && v <= 10)
+const isValidWatched = (v) => Number.isInteger(v) && v >= 0
+const toIntOrNull = (v) => (v === null || v === undefined || v === '' ? null : Number(v))
 
 const { Pool } = pg
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  // Локальный Postgres обычно без SSL, облачный (Neon) — с SSL
+  ssl: /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '')
+    ? false
+    : { rejectUnauthorized: false }
 })
 
 // ── Создаём таблицы ──────────────────────────────
@@ -50,10 +65,14 @@ async function initDB() {
 
 const app = express()
 
-app.use(cors())
+// CORS: если задан CLIENT_URL — пускаем только свои фронтенды
+const allowedOrigins = (process.env.CLIENT_URL || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+app.use(cors(allowedOrigins.length ? { origin: allowedOrigins } : undefined))
 
-app.use(bodyParser.json())
-app.use(bodyParser.urlencoded({ extended: true }))
+app.use(express.json({ limit: '100kb' }))
 
 // ── Middleware: проверка JWT ──────────────────────
 const auth = (req, res, next) => {
@@ -74,6 +93,12 @@ app.post('/auth/register', async (req, res) => {
   const { username, email, password } = req.body
   if (!username || !email || !password)
     return res.status(400).json({ error: 'All fields required' })
+  if (typeof username !== 'string' || username.trim().length < 2 || username.length > 32)
+    return res.status(400).json({ error: 'Username must be 2–32 characters' })
+  if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    return res.status(400).json({ error: 'Invalid email' })
+  if (typeof password !== 'string' || password.length < 6)
+    return res.status(400).json({ error: 'Password must be at least 6 characters' })
 
   try {
     const hash = await bcrypt.hash(password, 10)
@@ -94,13 +119,14 @@ app.post('/auth/register', async (req, res) => {
 // Логин
 app.post('/auth/login', async (req, res) => {
   const { email, password } = req.body
+  if (!email || !password) return res.status(400).json({ error: 'All fields required' })
   try {
     const result = await pool.query('SELECT * FROM users WHERE email = $1', [email])
     const user = result.rows[0]
-    if (!user) return res.status(400).json({ error: 'User not found' })
-
-    const valid = await bcrypt.compare(password, user.password)
-    if (!valid) return res.status(400).json({ error: 'Wrong password' })
+    // Одинаковый ответ для «нет пользователя» и «неверный пароль»,
+    // чтобы по ответу нельзя было проверить, зарегистрирован ли email
+    const valid = user && (await bcrypt.compare(password, user.password))
+    if (!valid) return res.status(400).json({ error: 'Invalid email or password' })
 
     const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '7d' })
     res.json({ token, user: { id: user.id, username: user.username, email: user.email } })
@@ -114,6 +140,7 @@ app.post('/auth/login', async (req, res) => {
 app.get('/auth/me', auth, async (req, res) => {
   try {
     const result = await pool.query('SELECT id, username, email FROM users WHERE id = $1', [req.user.id])
+    if (!result.rows[0]) return res.status(401).json({ error: 'User no longer exists' })
     res.json(result.rows[0])
   } catch (err) {
     res.status(500).json({ error: 'Server error' })
@@ -138,13 +165,22 @@ app.get('/list', auth, async (req, res) => {
 // Добавить аниме в список
 app.post('/list', auth, async (req, res) => {
   const { anime_id, title, image, episodes, status, score } = req.body
+  const animeId = Number(anime_id)
+  const eps = toIntOrNull(episodes)
+  const sc = toIntOrNull(score)
+  if (!isPositiveInt(animeId) || !title)
+    return res.status(400).json({ error: 'anime_id and title are required' })
+  if (status && !STATUSES.includes(status))
+    return res.status(400).json({ error: 'Invalid status' })
+  if (!isValidScore(sc)) return res.status(400).json({ error: 'Score must be 1–10' })
+  if (eps !== null && !isValidWatched(eps)) return res.status(400).json({ error: 'Invalid episodes' })
   try {
     const result = await pool.query(`
       INSERT INTO anime_list (user_id, anime_id, title, image, episodes, status, score)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (user_id, anime_id) DO NOTHING
       RETURNING *
-    `, [req.user.id, anime_id, title, image, episodes, status || 'planning', score || null])
+    `, [req.user.id, animeId, title, image || null, eps, status || 'planning', sc])
 
     if (!result.rows[0]) {
       return res.status(409).json({ error: 'Anime already in your list' })
@@ -159,29 +195,54 @@ app.post('/list', auth, async (req, res) => {
 
 // Обновить статус / оценку
 app.patch('/list/:anime_id', auth, async (req, res) => {
-  const { status, score, watched_episodes } = req.body
+  const { status } = req.body
+  const animeId = Number(req.params.anime_id)
+  if (!isPositiveInt(animeId)) return res.status(400).json({ error: 'Invalid anime id' })
+  if (status !== undefined && !STATUSES.includes(status))
+    return res.status(400).json({ error: 'Invalid status' })
+
+  // score: поле передано → обновляем (null = сбросить оценку); не передано → не трогаем.
+  // Через один COALESCE сбросить оценку было нельзя — null просто игнорировался.
+  const scoreProvided = 'score' in req.body
+  const score = scoreProvided ? toIntOrNull(req.body.score) : null
+  if (scoreProvided && !isValidScore(score))
+    return res.status(400).json({ error: 'Score must be 1–10' })
+
+  const watched = toIntOrNull(req.body.watched_episodes)
+  if (watched !== null && !isValidWatched(watched))
+    return res.status(400).json({ error: 'Invalid watched_episodes' })
+
   try {
     const result = await pool.query(`
       UPDATE anime_list
       SET status = COALESCE($1, status),
-          score = COALESCE($2, score),
-          watched_episodes = COALESCE($3, watched_episodes)
-      WHERE user_id = $4 AND anime_id = $5
+          score = CASE WHEN $2::boolean THEN $3::int ELSE score END,
+          -- не даём «досмотреть» больше серий, чем есть
+          watched_episodes = CASE
+            WHEN $4::int IS NULL THEN watched_episodes
+            WHEN episodes IS NOT NULL THEN LEAST($4::int, episodes)
+            ELSE $4::int
+          END
+      WHERE user_id = $5 AND anime_id = $6
       RETURNING *
-    `, [status, score, watched_episodes, req.user.id, req.params.anime_id])
-    
+    `, [status ?? null, scoreProvided, score, watched, req.user.id, animeId])
+
+    if (!result.rows[0]) return res.status(404).json({ error: 'Anime not in your list' })
     res.json(result.rows[0])
   } catch (err) {
+    console.error('Update anime error:', err)
     res.status(500).json({ error: 'Server error' })
   }
 })
 
 // Удалить из списка
 app.delete('/list/:anime_id', auth, async (req, res) => {
+  const animeId = Number(req.params.anime_id)
+  if (!isPositiveInt(animeId)) return res.status(400).json({ error: 'Invalid anime id' })
   try {
     await pool.query(
       'DELETE FROM anime_list WHERE user_id = $1 AND anime_id = $2',
-      [req.user.id, req.params.anime_id]
+      [req.user.id, animeId]
     )
     res.json({ success: true })
   } catch (err) {
@@ -223,6 +284,7 @@ app.get('/api/anime/search', async (req, res) => {
         Page(perPage: 12) {
           media(search: $search, type: ANIME) {
             id
+            idMal
             title { romaji english native }
             coverImage { large }
             episodes
@@ -235,13 +297,18 @@ app.get('/api/anime/search', async (req, res) => {
       variables: { search: q }
     }, { timeout: 5000 })
 
-    // Мапим данные под формат Jikan/Tenrai, который ожидает фронтенд
-    const formattedData = aniListRes.data.data.Page.media.map(item => ({
-      mal_id: item.id,
+    // Мапим данные под формат Jikan/Tenrai, который ожидает фронтенд.
+    // ВАЖНО: берём idMal, а не id AniList — у AniList своя нумерация,
+    // и страница деталей (Jikan /anime/:id) открывала бы совсем другое аниме.
+    // Тайтлы без привязки к MAL отбрасываем.
+    const formattedData = aniListRes.data.data.Page.media
+      .filter(item => item.idMal)
+      .map(item => ({
+      mal_id: item.idMal,
       title: item.title.romaji || item.title.english || item.title.native,
       images: { jpg: { image_url: item.coverImage.large } },
       episodes: item.episodes
-    }))
+      }))
 
     return res.json({ data: formattedData })
   } catch (err) {
@@ -263,7 +330,9 @@ app.get('/api/anime/search', async (req, res) => {
 
 // ── Прокси для получения аниме по ID ─────────────
 app.get('/api/anime/:id', async (req, res) => {
-  const { id } = req.params
+  const id = Number(req.params.id)
+  // id подставляется в URL внешнего API — пропускаем только числа
+  if (!isPositiveInt(id)) return res.status(400).json({ error: 'Invalid anime id' })
   try {
     const response = await axios.get(`https://api.tenrai.co/v1/anime/${id}`, { timeout: 5000 })
     return res.json(response.data)

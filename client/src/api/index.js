@@ -1,6 +1,21 @@
 import axios from 'axios'
 
-const api = axios.create({ baseURL: 'https://vagabond-anime-tracker.onrender.com' });
+// Локально: создай client/.env с VITE_API_URL=http://localhost:3002
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://vagabond-anime-tracker.onrender.com',
+})
+
+// Если токен протух — разлогиниваем, а не показываем пустой список
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401 && localStorage.getItem('token')) {
+      localStorage.removeItem('token')
+      window.location.reload()
+    }
+    return Promise.reject(err)
+  }
+)
 
 // Автоматически добавляем токен к каждому запросу
 api.interceptors.request.use(config => {

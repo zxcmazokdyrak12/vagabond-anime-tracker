@@ -71,8 +71,7 @@ vagabond-anime-tracker/
 │       └── main.jsx     # Virtual DOM entrypoint
 └── server/              # Node.js + Express + PostgreSQL core
     ├── .env.example     # Environment template
-    ├── db.js            # Automatic pool initialization and table creation schema
-    └── server.js        # REST endpoints, custom JWT middlewares & core routing
+    └── server.js        # DB init, REST endpoints, JWT middleware, input validation, anime API proxy
 ```
 
 ---
@@ -91,13 +90,13 @@ Navigate to the `/server` directory and install back-end packages:
 cd server
 npm install
 ```
-Create a `.env` file based on `.env.example` and supply your `DATABASE_URL` (PostgreSQL connection string) and `JWT_SECRET`. 
+Create a `.env` file based on `.env.example` and supply your `DATABASE_URL` (PostgreSQL connection string), `JWT_SECRET` and optionally `CLIENT_URL` (allowed CORS origin). The server refuses to start without `DATABASE_URL` and `JWT_SECRET`. 
 
 Boot the backend:
 ```bash
 npm start
 ```
-*The database tables will initialize automatically on boot. Terminal will log: `DB ready -> Server: http://localhost:3002`.*
+*The database tables will initialize automatically on boot. Terminal will log `DB ready` and `Server: http://localhost:3002`.*
 
 ### 3. Launch the Frontend
 Navigate to the `/client` directory and install dependencies:
@@ -105,7 +104,7 @@ Navigate to the `/client` directory and install dependencies:
 cd ../client
 npm install
 ```
-Launch the Vite development server:
+To point the client at your local backend, create `client/.env` with `VITE_API_URL=http://localhost:3002` (see `client/.env.example`). Then launch the Vite development server:
 ```bash
 npm run dev
 ```
