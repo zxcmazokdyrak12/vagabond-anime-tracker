@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
+import type { User } from '../types'
 import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import BrushStroke from './BrushStroke'
 import { useTheme } from '../lib/useTheme'
 
-const TABS = [
+const TABS: { id: TabId; glyph: string; label: string }[] = [
   { id: 'gate', glyph: '門', label: 'The gate' },
   { id: 'scrolls', glyph: '巻', label: 'My scrolls' },
   { id: 'path', glyph: '道', label: 'The path' },
@@ -22,13 +23,24 @@ export function Wordmark() {
   )
 }
 
-export default function Masthead({ user, onLogout, activeTab, initialQuery = '', scrollCount }) {
+export type TabId = 'gate' | 'scrolls' | 'path' | 'search'
+
+interface Props {
+  user: User | null
+  onLogout: () => void
+  activeTab?: TabId
+  initialQuery?: string
+  /** Сколько тайтлов в свитках — показывается рядом с пунктом меню */
+  scrollCount?: number
+}
+
+export default function Masthead({ user, onLogout, activeTab, initialQuery = '', scrollCount = 0 }: Props) {
   const navigate = useNavigate()
   const { theme, toggle } = useTheme()
   const [query, setQuery] = useState(initialQuery)
   const [slash, setSlash] = useState(false)
 
-  const submit = (e) => {
+  const submit = (e: FormEvent) => {
     e.preventDefault()
     const q = query.trim()
     if (!q) return

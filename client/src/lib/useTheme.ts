@@ -1,12 +1,16 @@
 import { useCallback, useState } from 'react'
 
+export type Theme = 'paper' | 'night'
+
 // Тема хранится в data-theme на <html>; начальное значение ставит скрипт в index.html
 export function useTheme() {
-  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'paper')
+  const [theme, setTheme] = useState<Theme>(() =>
+    document.documentElement.dataset.theme === 'night' ? 'night' : 'paper'
+  )
 
   const toggle = useCallback(() => {
     setTheme((prev) => {
-      const next = prev === 'night' ? 'paper' : 'night'
+      const next: Theme = prev === 'night' ? 'paper' : 'night'
       document.documentElement.dataset.theme = next
       try {
         localStorage.setItem('theme', next)

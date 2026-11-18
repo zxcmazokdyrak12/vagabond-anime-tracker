@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 
 // Оттиск печати «録» (записано), который ставится на постер при добавлении в свитки
-export default function Stamp({ show }) {
+export default function Stamp({ show }: { show: boolean }) {
   return (
     <AnimatePresence>
       {show && (

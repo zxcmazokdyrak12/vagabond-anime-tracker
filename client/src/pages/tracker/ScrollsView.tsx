@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import InkImage from '../../components/InkImage'
 import Enso from '../../components/Enso'
-import { STATUSES, STATUS_KEYS } from '../../lib/status'
+import { STATUSES, STATUS_KEYS, plural } from '../../lib/status'
+import type { ListEntry, ListPatch, Status } from '../../types'
 
-function Progress({ entry, onStep }) {
+type OnUpdate = (animeId: number, patch: ListPatch) => void
+
+function Progress({ entry, onStep }: { entry: ListEntry; onStep: (delta: number) => void }) {
   const watched = entry.watched_episodes || 0
   const total = entry.episodes
   const pct = total ? Math.min(100, (watched / total) * 100) : 0
@@ -17,9 +20,7 @@ function Progress({ entry, onStep }) {
         </span>
       ) : null}
       <span className="progress__text">
-        {total
-          ? `${watched} of ${total} ${total === 1 ? 'episode' : 'episodes'}`
-          : `${watched} ${watched === 1 ? 'episode' : 'episodes'} watched`}
+        {total ? `${watched} of ${plural(total, 'episode')}` : `${plural(watched, 'episode')} watched`}
       </span>
       <span className="step-btns">
         <button
@@ -33,7 +34,7 @@ function Progress({ entry, onStep }) {
         <button
           type="button"
           onClick={() => onStep(1)}
-          disabled={Boolean(total) && watched >= total}
+          disabled={total != null && total > 0 && watched >= total}
           aria-label={`Mark next episode of ${entry.title} as watched`}
         >
           +
@@ -43,8 +44,8 @@ function Progress({ entry, onStep }) {
   )
 }
 
-function ScrollRow({ entry, onUpdate, onDelete }) {
-  const step = (d) =>
+function ScrollRow({ entry, onUpdate, onDelete }: { entry: ListEntry; onUpdate: OnUpdate; onDelete: (e: ListEntry) => void }) {
+  const step = (d: number) =>
     onUpdate(entry.anime_id, { watched_episodes: Math.max(0, (entry.watched_episodes || 0) + d) })
 
   return (
@@ -66,7 +67,7 @@ function ScrollRow({ entry, onUpdate, onDelete }) {
           <select
             className={`select status--${entry.status}`}
             value={entry.status}
-            onChange={(e) => onUpdate(entry.anime_id, { status: e.target.value })}
+            onChange={(e) => onUpdate(entry.anime_id, { status: e.target.value as Status })}
           >
             {STATUS_KEYS.map((k) => (
               <option key={k} value={k}>
@@ -81,7 +82,7 @@ function ScrollRow({ entry, onUpdate, onDelete }) {
           <select
             className="select"
             value={entry.score || ''}
-            onChange={(e) => onUpdate(entry.anime_id, { score: e.target.value || null })}
+            onChange={(e) => onUpdate(entry.anime_id, { score: e.target.value ? Number(e.target.value) : null })}
           >
             <option value="">None</option>
             {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((n) => (
@@ -104,8 +105,15 @@ function ScrollRow({ entry, onUpdate, onDelete }) {
   )
 }
 
-export default function ScrollsView({ list, loaded, onUpdate, onDelete }) {
-  const [filter, setFilter] = useState('all')
+interface Props {
+  list: ListEntry[]
+  loaded: boolean
+  onUpdate: OnUpdate
+  onDelete: (entry: ListEntry) => void
+}
+
+export default function ScrollsView({ list, loaded, onUpdate, onDelete }: Props) {
+  const [filter, setFilter] = useState<Status | 'all'>('all')
 
   if (!loaded) return <Enso label="Unrolling your scrolls…" />
 
@@ -124,10 +132,10 @@ export default function ScrollsView({ list, loaded, onUpdate, onDelete }) {
     )
   }
 
-  const counts = STATUS_KEYS.reduce(
-    (acc, k) => ({ ...acc, [k]: list.filter((a) => a.status === k).length }),
-    {}
-  )
+  const counts = Object.fromEntries(STATUS_KEYS.map((k) => [k, list.filter((a) => a.status === k).length])) as Record<
+    Status,
+    number
+  >
   const shown = filter === 'all' ? list : list.filter((a) => a.status === filter)
 
   return (
@@ -155,7 +163,7 @@ export default function ScrollsView({ list, loaded, onUpdate, onDelete }) {
       </div>
 
       {shown.length === 0 ? (
-        <p className="muted">Nothing marked {STATUSES[filter].label.toLowerCase()} yet.</p>
+        <p className="muted">Nothing marked {filter === 'all' ? '' : STATUSES[filter].label.toLowerCase()} yet.</p>
       ) : (
         <ul className="scroll-list">
           {shown.map((entry) => (

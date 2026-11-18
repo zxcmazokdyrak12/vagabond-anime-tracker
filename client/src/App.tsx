@@ -6,15 +6,21 @@ import AuthPage from './pages/AuthPage'
 import TrackerPage from './pages/TrackerPage'
 import AnimeDetailPage from './pages/AnimeDetailPage'
 import Enso from './components/Enso'
+import type { User } from './types'
+
+interface PageProps {
+  user: User
+  onLogout: () => void
+}
 
 // key по id — при переходе между тайтлами страница начинает с чистого состояния
-function DetailRoute(props) {
+function DetailRoute(props: PageProps) {
   const { id } = useParams()
   return <AnimeDetailPage key={id} {...props} />
 }
 
 export default function App() {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(() => Boolean(localStorage.getItem('token')))
 
   useEffect(() => {
@@ -25,7 +31,7 @@ export default function App() {
       .finally(() => setLoading(false))
   }, [])
 
-  const handleLogin = (userData, token) => {
+  const handleLogin = (userData: User, token: string) => {
     localStorage.setItem('token', token)
     setUser(userData)
   }

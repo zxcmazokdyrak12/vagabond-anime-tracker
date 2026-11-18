@@ -4,26 +4,29 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   getList, getStats, searchAnime, addAnime, updateAnime, deleteAnime, getTopAnime, getSeasonNow,
 } from '../api'
-import Masthead from '../components/Masthead'
-import GateView from './tracker/GateView'
+import { errorStatus } from '../api'
+import Masthead, { type TabId } from '../components/Masthead'
+import GateView, { type DiscoverState } from './tracker/GateView'
 import ScrollsView from './tracker/ScrollsView'
 import PathView from './tracker/PathView'
-import SearchView from './tracker/SearchView'
+import SearchView, { type SearchState } from './tracker/SearchView'
 import { posterOf } from '../lib/status'
+import type { Anime, ListEntry, ListPatch, Stats, User } from '../types'
 
-const TAB_IDS = ['gate', 'scrolls', 'path', 'search']
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+const TAB_IDS: TabId[] = ['gate', 'scrolls', 'path', 'search']
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-export default function TrackerPage({ user, onLogout }) {
+export default function TrackerPage({ user, onLogout }: { user: User; onLogout: () => void }) {
   // Вкладка и запрос живут в URL — «Назад» со страницы тайтла возвращает туда же
   const [params] = useSearchParams()
-  const tab = TAB_IDS.includes(params.get('tab')) ? params.get('tab') : 'scrolls'
+  const tabParam = params.get('tab') as TabId | null
+  const tab: TabId = tabParam && TAB_IDS.includes(tabParam) ? tabParam : 'scrolls'
   const query = (params.get('q') || '').trim()
 
-  const [list, setList] = useState([])
+  const [list, setList] = useState<ListEntry[]>([])
   const [listLoaded, setListLoaded] = useState(false)
-  const [stats, setStats] = useState(null)
-  const [stampId, setStampId] = useState(null)
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [stampId, setStampId] = useState<number | null>(null)
 
   // ── Свитки и статистика ────────────────────────────────
   const loadList = useCallback(async () => {
@@ -49,11 +52,17 @@ export default function TrackerPage({ user, onLogout }) {
   useEffect(() => {
     let cancelled = false
     getList()
-      .then((res) => !cancelled && setList(res.data))
+      .then((res) => {
+        if (!cancelled) setList(res.data)
+      })
       .catch((err) => console.error('Failed to load list:', err))
-      .finally(() => !cancelled && setListLoaded(true))
+      .finally(() => {
+        if (!cancelled) setListLoaded(true)
+      })
     getStats()
-      .then((res) => !cancelled && setStats(res.data))
+      .then((res) => {
+        if (!cancelled) setStats(res.data)
+      })
       .catch((err) => console.error('Failed to load stats:', err))
     return () => { cancelled = true }
   }, [])
@@ -61,7 +70,7 @@ export default function TrackerPage({ user, onLogout }) {
   const inListIds = useMemo(() => new Set(list.map((a) => a.anime_id)), [list])
 
   // ── Врата: топ и сезон (грузим один раз при первом заходе) ──
-  const [discover, setDiscover] = useState({ status: 'idle', top: [], season: [] })
+  const [discover, setDiscover] = useState<DiscoverState>({ status: 'idle', top: [], season: [] })
   const discoverInFlight = useRef(false)
 
   useEffect(() => {
@@ -69,9 +78,8 @@ export default function TrackerPage({ user, onLogout }) {
     discoverInFlight.current = true
     ;(async () => {
       try {
-        const topRes = await getTopAnime()
-        await sleep(400) // Jikan пускает ~3 запроса в секунду
-        const seasonRes = await getSeasonNow()
+        // Очередь под лимиты Jikan и кеш — на сервере, поэтому можно параллельно
+        const [topRes, seasonRes] = await Promise.all([getTopAnime(), getSeasonNow()])
         setDiscover({ status: 'done', top: topRes.data.data.slice(0, 10), season: seasonRes.data.data.slice(0, 12) })
       } catch (err) {
         console.error('Failed to load discover:', err)
@@ -85,7 +93,7 @@ export default function TrackerPage({ user, onLogout }) {
   // ── Поиск: запускается от ?q= в адресе, до 3 попыток при 429/5xx ──
   const [retryNonce, setRetryNonce] = useState(0)
   const searchKey = `${query}#${retryNonce}`
-  const [search, setSearch] = useState({ key: null, results: [], error: null })
+  const [search, setSearch] = useState<SearchState>({ key: null, results: [], error: null })
   const searching = tab === 'search' && Boolean(query) && search.key !== searchKey
 
   useEffect(() => {
@@ -98,13 +106,13 @@ export default function TrackerPage({ user, onLogout }) {
           if (!cancelled) setSearch({ key: searchKey, results: res.data.data || [], error: null })
           return
         } catch (err) {
-          const status = err.response?.status
-          if ([429, 502, 503, 504].includes(status) && attempt < 3) {
+          const status = errorStatus(err)
+          if (typeof status === 'number' && [429, 502, 503, 504].includes(status) && attempt < 3) {
             await sleep(1200 * attempt)
             if (cancelled) return
             continue
           }
-          if (!cancelled) setSearch({ key: searchKey, results: [], error: status || 'network' })
+          if (!cancelled) setSearch({ key: searchKey, results: [], error: status })
           return
         }
       }
@@ -113,7 +121,7 @@ export default function TrackerPage({ user, onLogout }) {
   }, [tab, query, searchKey])
 
   // ── Действия со свитками ───────────────────────────────
-  const handleAdd = async (anime) => {
+  const handleAdd = async (anime: Anime) => {
     if (inListIds.has(anime.mal_id)) return
     setStampId(anime.mal_id)
     try {
@@ -132,13 +140,17 @@ export default function TrackerPage({ user, onLogout }) {
     }
   }
 
-  const handleUpdate = async (animeId, data) => {
+  const handleUpdate = async (animeId: number, data: ListPatch) => {
     // Досмотрел последнюю серию — сразу помечаем как «完 completed»
     const current = list.find((item) => item.anime_id === animeId)
-    if (current?.episodes && data.watched_episodes >= current.episodes && current.status !== 'completed') {
+    if (
+      current?.episodes &&
+      data.watched_episodes !== undefined &&
+      data.watched_episodes >= current.episodes &&
+      current.status !== 'completed'
+    ) {
       data = { ...data, status: 'completed' }
     }
-    if ('score' in data) data = { ...data, score: data.score ? Number(data.score) : null }
 
     // Оптимистичное обновление, затем синхронизация с ответом сервера
     setList((prev) => prev.map((item) => (item.anime_id === animeId ? { ...item, ...data } : item)))
@@ -152,7 +164,7 @@ export default function TrackerPage({ user, onLogout }) {
     }
   }
 
-  const handleDelete = async (entry) => {
+  const handleDelete = async (entry: ListEntry) => {
     if (!window.confirm(`Remove “${entry.title}” from your scrolls? Its progress and score will be lost.`)) return
     setList((prev) => prev.filter((item) => item.anime_id !== entry.anime_id))
     try {

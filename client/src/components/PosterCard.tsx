@@ -2,13 +2,21 @@ import { Link } from 'react-router-dom'
 import InkImage from './InkImage'
 import Stamp from './Stamp'
 import { posterOf } from '../lib/status'
+import type { Anime } from '../types'
+
+interface Props {
+  anime: Anime
+  inList: boolean
+  /** Сейчас на постер ставится печать «録» */
+  stamped: boolean
+  onAdd: (anime: Anime) => void
+}
 
 // Постер тайтла в сетке: картинка-ссылка, название, кнопка «в свитки»
-export default function PosterCard({ anime, inList, stamped, onAdd }) {
-  const meta = [
-    anime.score && `Score ${anime.score}`,
-    anime.episodes ? `${anime.episodes} ep.` : null,
-  ].filter(Boolean)
+export default function PosterCard({ anime, inList, stamped, onAdd }: Props) {
+  const meta = [anime.score ? `Score ${anime.score}` : null, anime.episodes ? `${anime.episodes} ep.` : null].filter(
+    Boolean
+  )
 
   return (
     <li className="poster">

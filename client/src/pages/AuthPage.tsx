@@ -1,9 +1,15 @@
-import { useState } from 'react'
+import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { motion } from 'framer-motion'
 import { login, register } from '../api'
 import { useTheme } from '../lib/useTheme'
+import { errorStatus } from '../api'
+import type { User } from '../types'
+import axios from 'axios'
 
-const COPY = {
+type Mode = 'login' | 'register'
+type Field = 'username' | 'email' | 'password'
+
+const COPY: Record<Mode, Record<string, string>> = {
   login: {
     glyph: '道',
     title: 'Enter the dojo',
@@ -24,27 +30,30 @@ const COPY = {
   },
 }
 
-export default function AuthPage({ onLogin }) {
-  const [mode, setMode] = useState('login')
+export default function AuthPage({ onLogin }: { onLogin: (user: User, token: string) => void }) {
+  const [mode, setMode] = useState<Mode>('login')
   const [form, setForm] = useState({ username: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { theme, toggle } = useTheme()
-  const copy = COPY[mode]
+  const copy = COPY[mode]!
 
-  const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
+  const set = (field: Field) => (e: ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [field]: e.target.value }))
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
-      const res = await (mode === 'login' ? login : register)(form)
+      const res = mode === 'login' ? await login(form) : await register(form)
       onLogin(res.data.user, res.data.token)
     } catch (err) {
+      const serverMessage = axios.isAxiosError(err) ? (err.response?.data as { error?: string })?.error : undefined
       setError(
-        err.response?.data?.error ||
-          (err.response ? 'The server couldn’t sign you in. Try again in a minute.' : 'No connection. Check your network and try again.')
+        serverMessage ||
+          (errorStatus(err) === 'network'
+            ? 'No connection. Check your network and try again.'
+            : 'The server couldn’t sign you in. Try again in a minute.')
       )
     } finally {
       setLoading(false)

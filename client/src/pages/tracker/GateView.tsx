@@ -7,6 +7,19 @@ import Stamp from '../../components/Stamp'
 import Enso from '../../components/Enso'
 import Notice from '../../components/Notice'
 import { posterOf } from '../../lib/status'
+import type { Anime } from '../../types'
+
+export interface DiscoverState {
+  status: 'idle' | 'done' | 'error'
+  top: Anime[]
+  season: Anime[]
+}
+
+interface AddProps {
+  inListIds: Set<number>
+  stampId: number | null
+  onAdd: (anime: Anime) => void
+}
 
 // Место в топе — кандзи-цифрами: цифры кистью читаются плохо (1 похожа на 7)
 const KANJI_NUM = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
@@ -14,7 +27,7 @@ const KANJI_NUM = ['一', '二', '三', '四', '五', '六', '七', '八', '九'
 const HERO_SIZE = 5
 const AUTOPLAY_MS = 8000
 
-function GateHero({ items, inListIds, stampId, onAdd }) {
+function GateHero({ items, inListIds, stampId, onAdd }: AddProps & { items: Anime[] }) {
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
   const anime = items[index]
@@ -28,7 +41,7 @@ function GateHero({ items, inListIds, stampId, onAdd }) {
   }, [paused, items.length])
 
   if (!anime) return null
-  const go = (d) => setIndex((i) => (i + d + items.length) % items.length)
+  const go = (d: number) => setIndex((i) => (i + d + items.length) % items.length)
   const inList = inListIds.has(anime.mal_id)
 
   return (
@@ -75,7 +88,7 @@ function GateHero({ items, inListIds, stampId, onAdd }) {
               )}
               <div><dt>Episodes</dt><dd>{anime.episodes || 'Ongoing'}</dd></div>
             </dl>
-            {anime.genres?.length > 0 && (
+            {anime.genres && anime.genres.length > 0 && (
               <p className="genres">{anime.genres.map((g) => g.name).join(', ')}</p>
             )}
             {anime.synopsis && <p className="gate-hero__synopsis">{anime.synopsis}</p>}
@@ -121,7 +134,13 @@ function GateHero({ items, inListIds, stampId, onAdd }) {
   )
 }
 
-export default function GateView({ discover, onRetry, inListIds, stampId, onAdd }) {
+export default function GateView({
+  discover,
+  onRetry,
+  inListIds,
+  stampId,
+  onAdd,
+}: AddProps & { discover: DiscoverState; onRetry: () => void }) {
   if (discover.status === 'error') {
     return (
       <Notice
@@ -179,7 +198,7 @@ export default function GateView({ discover, onRetry, inListIds, stampId, onAdd 
                     <span className="rank-list__title">{anime.title}</span>
                     <br />
                     <span className="rank-list__meta">
-                      {[anime.type, anime.score && `score ${anime.score}`].filter(Boolean).join(', ')}
+                      {[anime.type, anime.score ? `score ${anime.score}` : null].filter(Boolean).join(', ')}
                     </span>
                   </span>
                 </Link>

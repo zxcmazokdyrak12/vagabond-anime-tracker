@@ -1,32 +1,30 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { getAnimeFull, getAnimeCharacters, getAnimeEpisodes, getList, addAnime } from '../api'
+import { getAnimeFull, getAnimeCharacters, getAnimeEpisodes, getList, addAnime, errorStatus } from '../api'
 import Masthead from '../components/Masthead'
 import InkImage from '../components/InkImage'
 import Stamp from '../components/Stamp'
 import Enso from '../components/Enso'
 import Notice from '../components/Notice'
 import { STATUSES, posterOf } from '../lib/status'
+import type { Anime, Character, Episode, ListEntry, User } from '../types'
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-// Jikan часто отвечает 429/5xx — повторяем с нарастающей паузой
-async function fetchWithRetry(fn, attempts = 3) {
-  for (let i = 0; i < attempts; i++) {
+// Сервер сам повторяет запросы к Jikan; здесь — запасной повтор на случай холодного старта Render
+async function fetchWithRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
+  for (let i = 1; ; i++) {
     try {
       return await fn()
     } catch (err) {
-      const status = err.response?.status
-      if ([429, 502, 503, 504].includes(status) && i < attempts - 1) {
-        await sleep(1000 * (i + 1))
-        continue
-      }
-      throw err
+      const status = errorStatus(err)
+      if (i >= attempts || status === 404 || status === 400) throw err
+      await sleep(1500 * i)
     }
   }
 }
 
-function Section({ id, glyph, title, children }) {
+function Section({ id, glyph, title, children }: { id: string; glyph: string; title: string; children: ReactNode }) {
   return (
     <section className="section" aria-labelledby={id}>
       <h2 className="section-head" id={id}>
@@ -38,19 +36,28 @@ function Section({ id, glyph, title, children }) {
   )
 }
 
-export default function AnimeDetailPage({ user, onLogout }) {
-  const { id } = useParams()
+interface LoadState {
+  /** Для какого id и попытки загружено — пока не совпадает с текущими, показываем загрузку */
+  key: string | null
+  anime: Anime | null
+  error: 'missing' | 'down' | null
+}
+
+export default function AnimeDetailPage({ user, onLogout }: { user: User; onLogout: () => void }) {
+  const { id = '' } = useParams()
   const navigate = useNavigate()
 
-  const [state, setState] = useState({ id: null, anime: null, error: null })
-  const [characters, setCharacters] = useState([])
-  const [episodes, setEpisodes] = useState([])
-  const [entry, setEntry] = useState(null) // запись в свитках, если тайтл уже добавлен
+  const [state, setState] = useState<LoadState>({ key: null, anime: null, error: null })
+  const [characters, setCharacters] = useState<Character[]>([])
+  const [episodes, setEpisodes] = useState<Episode[]>([])
+  const [entry, setEntry] = useState<ListEntry | null>(null) // запись в свитках, если тайтл уже добавлен
   const [adding, setAdding] = useState(false)
   const [reloadNonce, setReloadNonce] = useState(0)
 
-  const loading = state.id !== `${id}#${reloadNonce}`
+  const loading = state.key !== `${id}#${reloadNonce}`
   const { anime, error } = state
+  const openings = anime?.theme?.openings ?? []
+  const endings = anime?.theme?.endings ?? []
 
   useEffect(() => {
     let cancelled = false
@@ -61,26 +68,28 @@ export default function AnimeDetailPage({ user, onLogout }) {
       try {
         const fullRes = await fetchWithRetry(() => getAnimeFull(id))
         if (cancelled) return
-        setState({ id: key, anime: fullRes.data.data, error: null })
+        setState({ key, anime: fullRes.data.data, error: null })
       } catch (err) {
         console.error('Failed to load anime:', err)
-        if (!cancelled) setState({ id: key, anime: null, error: err.response?.status === 404 ? 'missing' : 'down' })
+        if (!cancelled) setState({ key, anime: null, error: errorStatus(err) === 404 ? 'missing' : 'down' })
         return
       }
 
-      const listRes = await listPromise
-      if (!cancelled) setEntry(listRes?.data.find((a) => a.anime_id === Number(id)) || null)
-
-      await sleep(600)
-      const charRes = await fetchWithRetry(() => getAnimeCharacters(id), 4).catch(() => null)
-      if (!cancelled) setCharacters(charRes ? charRes.data.data.slice(0, 12) : [])
-
-      await sleep(400)
-      const epsRes = await fetchWithRetry(() => getAnimeEpisodes(id)).catch(() => null)
-      if (!cancelled) setEpisodes(epsRes ? epsRes.data.data.slice(0, 12) : [])
+      // Персонажи, серии и свитки — параллельно; ошибки здесь не критичны
+      const [listRes, charRes, epsRes] = await Promise.all([
+        listPromise,
+        getAnimeCharacters(id).catch(() => null),
+        getAnimeEpisodes(id).catch(() => null),
+      ])
+      if (cancelled) return
+      setEntry(listRes?.data.find((a) => a.anime_id === Number(id)) ?? null)
+      setCharacters(charRes ? charRes.data.data.slice(0, 12) : [])
+      setEpisodes(epsRes ? epsRes.data.data.slice(0, 12) : [])
     })()
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [id, reloadNonce])
 
   const handleAdd = async () => {
@@ -103,7 +112,7 @@ export default function AnimeDetailPage({ user, onLogout }) {
   }
 
   // Если на страницу пришли по прямой ссылке — «назад» ведёт на главную
-  const goBack = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/'))
+  const goBack = () => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate('/'))
 
   return (
     <>
@@ -157,7 +166,7 @@ export default function AnimeDetailPage({ user, onLogout }) {
                   <div><dt>Episodes</dt><dd>{anime.episodes || 'Unknown'}</dd></div>
                 </dl>
 
-                {anime.genres?.length > 0 && (
+                {anime.genres && anime.genres.length > 0 && (
                   <p className="genres">{anime.genres.map((g) => g.name).join(', ')}</p>
                 )}
 
@@ -255,21 +264,21 @@ export default function AnimeDetailPage({ user, onLogout }) {
                   </dl>
                 </Section>
 
-                {(anime.theme?.openings?.length > 0 || anime.theme?.endings?.length > 0) && (
+                {(openings.length > 0 || endings.length > 0) && (
                   <Section id="songs" glyph="歌" title="Theme songs">
-                    {anime.theme.openings?.length > 0 && (
+                    {openings.length > 0 && (
                       <>
                         <h3 className="sub-head">Opening</h3>
                         <ul className="song-list">
-                          {anime.theme.openings.map((t, i) => <li key={i}>{t}</li>)}
+                          {openings.map((t, i) => <li key={i}>{t}</li>)}
                         </ul>
                       </>
                     )}
-                    {anime.theme.endings?.length > 0 && (
+                    {endings.length > 0 && (
                       <>
                         <h3 className="sub-head">Ending</h3>
                         <ul className="song-list">
-                          {anime.theme.endings.map((t, i) => <li key={i}>{t}</li>)}
+                          {endings.map((t, i) => <li key={i}>{t}</li>)}
                         </ul>
                       </>
                     )}

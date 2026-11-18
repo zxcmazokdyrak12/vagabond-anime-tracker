@@ -1,13 +1,30 @@
 import PosterCard from '../../components/PosterCard'
 import Enso from '../../components/Enso'
 import Notice from '../../components/Notice'
+import type { Anime } from '../../types'
 
-const ERRORS = {
+export interface SearchState {
+  key: string | null
+  results: Anime[]
+  error: number | 'network' | null
+}
+
+interface Props {
+  query: string
+  search: SearchState
+  loading: boolean
+  onRetry: () => void
+  inListIds: Set<number>
+  stampId: number | null
+  onAdd: (anime: Anime) => void
+}
+
+const ERRORS: Record<number, string> = {
   429: 'Too many searches in a row. Wait a few seconds, then try again.',
   502: 'The anime catalogues aren’t responding right now. Try again in a minute.',
 }
 
-export default function SearchView({ query, search, loading, onRetry, inListIds, stampId, onAdd }) {
+export default function SearchView({ query, search, loading, onRetry, inListIds, stampId, onAdd }: Props) {
   if (!query) {
     return <Notice title="Type a title in the search field above">English and romaji titles both work.</Notice>
   }
@@ -23,7 +40,7 @@ export default function SearchView({ query, search, loading, onRetry, inListIds,
       >
         {search.error === 'network'
           ? 'Your connection dropped. Check it and search again.'
-          : ERRORS[search.error] || `The server answered with an error (${search.error}). Try again in a minute.`}
+          : ERRORS[search.error] ?? `The server answered with an error (${search.error}). Try again in a minute.`}
       </Notice>
     )
   }
