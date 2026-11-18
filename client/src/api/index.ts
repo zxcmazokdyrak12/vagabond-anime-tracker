@@ -4,9 +4,9 @@ import type {
 } from '../types'
 
 // Локально: создай client/.env с VITE_API_URL=http://localhost:3002
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://vagabond-anime-tracker.onrender.com',
-})
+export const API_URL: string = import.meta.env.VITE_API_URL || 'https://vagabond-anime-tracker.onrender.com'
+
+const api = axios.create({ baseURL: API_URL })
 
 // Автоматически добавляем токен к каждому запросу
 api.interceptors.request.use((config) => {
