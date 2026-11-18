@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import InkImage from '../../components/InkImage'
 import Enso from '../../components/Enso'
 import Notice from '../../components/Notice'
+import NotifyToggle from '../../components/NotifyToggle'
 import { dayKey, groupByDay } from '../../lib/calendar'
 import type { CalendarEpisode } from '../../types'
 
@@ -43,6 +44,8 @@ export default function CalendarView({ calendar, onRetry }: { calendar: Calendar
 
   if (!calendar.episodes.length) {
     return (
+      <>
+      <NotifyToggle />
       <div className="empty">
         <span className="brush" aria-hidden="true">暦</span>
         <div>
@@ -56,12 +59,14 @@ export default function CalendarView({ calendar, onRetry }: { calendar: Calendar
           </Link>
         </div>
       </div>
+      </>
     )
   }
 
   return (
     <>
       <h1 className="visually-hidden">This week</h1>
+      <NotifyToggle />
       <ol className="calendar">
         {groupByDay(calendar.episodes).map(([key, eps]) => {
           const date = new Date(eps[0]!.airing_at)

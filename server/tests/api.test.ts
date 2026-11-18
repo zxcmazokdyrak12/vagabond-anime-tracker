@@ -4,6 +4,7 @@ import type { Express } from 'express'
 import { createApp } from '../src/app.js'
 import type { Db } from '../src/db.js'
 import { runMigrations } from '../src/migrate.js'
+import type { SendPush } from '../src/lib/notifier.js'
 import { readdirSync } from 'node:fs'
 import { JWT_SECRET, fakeHttp, freshDb } from './helpers.js'
 
@@ -57,6 +58,23 @@ const upstream = fakeHttp([
         return variables?.idMal === 52991
           ? { status: 200, data: { data: { Media: FRIEREN } } }
           : { status: 404, data: { errors: [{ message: 'Not Found.' }] } }
+      }
+      if (query.includes('airingSchedules(')) {
+        const now = Math.floor(Date.now() / 1000)
+        return {
+          status: 200,
+          data: {
+            data: {
+              Page: {
+                pageInfo: { hasNextPage: false },
+                airingSchedules: [
+                  { episode: 8, airingAt: now - 600, media: { idMal: 52991, title: { romaji: 'Sousou no Frieren', english: 'Frieren' }, coverImage: { medium: 'f.png' } } },
+                  { episode: 3, airingAt: now - 900, media: { idMal: 777, title: { romaji: 'Nobody watches', english: null }, coverImage: { medium: null } } },
+                ],
+              },
+            },
+          },
+        }
       }
       if (query.includes('notYetAired: true')) {
         const now = Math.floor(Date.now() / 1000)
@@ -131,12 +149,28 @@ const upstream = fakeHttp([
   [/jikan/, () => ({ status: 0, data: null })],
 ])
 
+// Фейковый push-сервис: запоминает отправленное, статус ответа можно подменить по endpoint
+const pushed: { endpoint: string; title: string; body: string; url: string }[] = []
+const pushStatus = new Map<string, number>()
+const sendPush: SendPush = async (sub, message) => {
+  pushed.push({ endpoint: sub.endpoint, ...message })
+  return pushStatus.get(sub.endpoint) ?? 201
+}
+
 const makeApp = (attempts = 1000) =>
   createApp({
     db,
-    config: { jwtSecret: JWT_SECRET, clientOrigins: [], authAttemptsPer15Min: attempts },
+    config: {
+      jwtSecret: JWT_SECRET,
+      clientOrigins: [],
+      authAttemptsPer15Min: attempts,
+      push: { publicKey: 'BPublicKey', privateKey: 'private', subject: 'mailto:test@test.dev' },
+      cronSecret: 'cron-secret',
+    },
     http: upstream.http,
     upstreamIntervalMs: 0,
+    sendPush,
+    notifyEveryMs: 0,
   })
 
 async function signUp(name: string) {
@@ -469,6 +503,81 @@ describe('calendar and recommendations', () => {
     // Evangelion советуют к двум любимым — он выше, хоть рейтинг каждой рекомендации ниже
     expect(res.body.data.map((a: { mal_id: number }) => a.mal_id)).toEqual([30, 205])
     expect(res.body.data[0].because).toEqual(['Cowboy Bebop', 'Fullmetal Alchemist: Brotherhood'])
+  })
+})
+
+describe('push notifications', () => {
+  const sub = (n: number) => ({
+    endpoint: `https://fcm.googleapis.com/fcm/send/device-${n}`,
+    keys: { p256dh: 'BKey', auth: 'secret' },
+  })
+
+  it('hands out the public key and validates subscriptions', async () => {
+    const { auth } = await signUp('yoshioka')
+    expect((await request(app).get('/push/key')).body).toEqual({ key: 'BPublicKey' })
+    expect((await request(app).post('/push/subscribe').send(sub(1))).status).toBe(401)
+    // Только настоящие push-сервисы — иначе сервер можно заставить стучаться куда угодно
+    for (const endpoint of ['http://fcm.googleapis.com/x', 'https://evil.example/fcm.googleapis.com', 'https://169.254.169.254/']) {
+      expect((await request(app).post('/push/subscribe').set(auth).send({ ...sub(1), endpoint })).status).toBe(400)
+    }
+    expect((await request(app).post('/push/subscribe').set(auth).send(sub(1))).status).toBe(201)
+
+    pushed.length = 0
+    expect((await request(app).post('/push/test').set(auth)).body).toEqual({ delivered: 1 })
+    expect(pushed[0]?.title).toBe('Vagabond')
+  })
+
+  it('keeps at most five devices per account', async () => {
+    const { auth } = await signUp('denshichiro')
+    for (let n = 10; n < 17; n++) await request(app).post('/push/subscribe').set(auth).send(sub(n))
+    const { rows } = await db.query(
+      `SELECT count(*)::int AS n FROM push_subscriptions WHERE endpoint LIKE '%device-1_'`
+    )
+    expect(rows[0].n).toBe(5)
+  })
+
+  it('notifies watchers of a new episode once, and forgets dead devices', async () => {
+    const { auth } = await signUp('seijuro')
+    await request(app).post('/list').set(auth).send({ anime_id: 52991, title: 'Frieren', status: 'watching' })
+    await request(app).post('/push/subscribe').set(auth).send(sub(42))
+    await request(app).post('/push/subscribe').set(auth).send(sub(43))
+    pushStatus.set(sub(43).endpoint, 410) // этот браузер уже отписался
+
+    expect((await request(app).post('/internal/notify-airing')).status).toBe(403)
+    expect((await request(app).post('/internal/notify-airing').set('x-cron-secret', 'wrong')).status).toBe(403)
+
+    pushed.length = 0
+    const first = await request(app).post('/internal/notify-airing').set('x-cron-secret', 'cron-secret')
+    expect(first.body.sent).toBeGreaterThanOrEqual(1)
+    const mine = pushed.filter((p) => p.endpoint === sub(42).endpoint)
+    expect(mine).toEqual([expect.objectContaining({ title: 'Frieren', body: 'Episode 8 is out.', url: '/anime/52991' })])
+    expect(pushed.some((p) => p.title === 'Nobody watches')).toBe(false)
+
+    const dead = await db.query('SELECT 1 FROM push_subscriptions WHERE endpoint = $1', [sub(43).endpoint])
+    expect(dead.rowCount).toBe(0)
+
+    pushed.length = 0
+    await request(app).post('/internal/notify-airing').set('x-cron-secret', 'cron-secret')
+    expect(pushed.filter((p) => p.endpoint === sub(42).endpoint)).toHaveLength(0) // второй раз не шлём
+  })
+})
+
+describe('notification scheduler without a secret', () => {
+  it('is public but runs at most once per interval', async () => {
+    const open = createApp({
+      db,
+      config: {
+        jwtSecret: JWT_SECRET, clientOrigins: [], authAttemptsPer15Min: 1000,
+        push: { publicKey: 'BPublicKey', privateKey: 'private', subject: 'mailto:test@test.dev' },
+      },
+      http: upstream.http,
+      upstreamIntervalMs: 0,
+      sendPush,
+    })
+    expect((await request(open).post('/internal/notify-airing')).status).toBe(200)
+    const again = await request(open).post('/internal/notify-airing')
+    expect(again.status).toBe(429)
+    expect(again.body.retry_in_s).toBeGreaterThan(500)
   })
 })
 

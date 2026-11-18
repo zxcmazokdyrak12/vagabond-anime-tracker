@@ -61,6 +61,12 @@ export const getAnimeEpisodes = (id: number | string) => api.get<Paged<Episode>>
 export const getCalendar = () => api.get<{ data: CalendarEpisode[] }>('/calendar')
 export const getRecommendations = () => api.get<{ data: Recommendation[]; seeds: string[] }>('/recommendations')
 
+// Пуш-уведомления
+export const getPushKey = () => api.get<{ key: string }>('/push/key')
+export const subscribePush = (sub: PushSubscriptionJSON) => api.post('/push/subscribe', sub)
+export const unsubscribePush = (endpoint: string) => api.delete('/push/subscribe', { data: { endpoint } })
+export const testPush = () => api.post<{ delivered: number }>('/push/test')
+
 /** HTTP-статус ошибки запроса или 'network', если ответа не было */
 export const errorStatus = (err: unknown): number | 'network' =>
   axios.isAxiosError(err) && err.response ? err.response.status : 'network'

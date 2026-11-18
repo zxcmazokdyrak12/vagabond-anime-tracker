@@ -1,0 +1,23 @@
+name: Episode notifications
+
+# Render на бесплатном тарифе не умеет cron — раз в час будим сервер и просим разослать
+# пуши о вышедших сериях. Окно на сервере — 3 часа, дубли отсекает таблица notified_episodes.
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wake the server and send notifications
+        env:
+          API_URL: https://vagabond-anime-tracker.onrender.com
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        # CRON_SECRET необязателен: без него сервер просто не даёт запускать рассылку чаще раза в 10 минут
+        run: |
+          # Холодный старт Render — до минуты
+          for i in $(seq 1 12); do curl -fs --max-time 10 "$API_URL/ping" && break; sleep 10; done
+          curl -fsS --max-time 120 -X POST "$API_URL/internal/notify-airing" -H "x-cron-secret: ${CRON_SECRET:-none}"

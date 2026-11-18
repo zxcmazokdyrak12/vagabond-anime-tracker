@@ -8,6 +8,10 @@ export interface Config {
   clientOrigins: string[]
   /** Сколько попыток входа/регистрации разрешено с одного IP за 15 минут */
   authAttemptsPer15Min: number
+  /** Пуш-уведомления; без ключей функция просто выключена */
+  push: { publicKey: string; privateKey: string; subject: string } | null
+  /** Секрет, с которым планировщик (GitHub Actions) вызывает рассылку */
+  cronSecret: string | null
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -24,5 +28,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       .map((s) => s.trim())
       .filter(Boolean),
     authAttemptsPer15Min: Number(env.AUTH_RATE_LIMIT) || 10,
+    push:
+      env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY
+        ? {
+            publicKey: env.VAPID_PUBLIC_KEY,
+            privateKey: env.VAPID_PRIVATE_KEY,
+            subject: env.VAPID_SUBJECT || 'mailto:noreply@vagabond-anime-tracker.dev',
+          }
+        : null,
+    cronSecret: env.CRON_SECRET || null,
   }
 }

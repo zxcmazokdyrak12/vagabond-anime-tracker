@@ -72,6 +72,8 @@ export function createCachedClient({ http, minIntervalMs = 400, maxEntries = 500
     get: <T = unknown>(url: string, ttlMs: number) => request<T>(url, ttlMs, () => http.get(url)),
     post: <T = unknown>(url: string, body: unknown, ttlMs: number) =>
       request<T>(`${url}#${JSON.stringify(body)}`, ttlMs, () => http.post(url, body)),
+    /** Запрос без кеша, но через ту же очередь (для request с собственным ключом) */
+    rawPost: (url: string, body: unknown) => http.post(url, body),
     clear: () => cache.clear(),
     get size() {
       return cache.size

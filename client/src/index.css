@@ -1866,3 +1866,45 @@ kbd {
 .poster-grid--row {
   grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
 }
+
+/* ── Уведомления ────────────────────────────────────────────── */
+.notify {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 2rem;
+  background: var(--paper-deep);
+  border-radius: 3px;
+}
+
+.notify__glyph {
+  font-size: 2.25rem;
+}
+
+.notify__title {
+  font-weight: 800;
+}
+
+.notify__text {
+  font-size: var(--step--1);
+  color: var(--wash);
+  max-width: 44rem;
+}
+
+.notify__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+@media (max-width: 720px) {
+  .notify {
+    grid-template-columns: auto 1fr;
+  }
+
+  .notify__actions {
+    grid-column: 1 / -1;
+  }
+}
