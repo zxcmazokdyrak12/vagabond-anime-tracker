@@ -2,6 +2,7 @@ import PosterCard from '../../components/PosterCard'
 import Enso from '../../components/Enso'
 import Notice from '../../components/Notice'
 import type { Anime } from '../../types'
+import { plural, useT } from '../../lib/i18n'
 
 export interface SearchState {
   key: string | null
@@ -25,22 +26,25 @@ const ERRORS: Record<number, string> = {
 }
 
 export default function SearchView({ query, search, loading, onRetry, inListIds, stampId, onAdd }: Props) {
+  const t = useT()
   if (!query) {
-    return <Notice title="Type a title in the search field above">English and romaji titles both work.</Notice>
+    return <Notice title={t('Type a title in the search field above')}>{t('English and romaji titles both work.')}</Notice>
   }
 
-  if (loading) return <Enso label={`Searching for “${query}”…`} />
+  if (loading) return <Enso label={t('Searching for “{q}”…', { q: query })} />
 
   if (search.error) {
     return (
       <Notice
         tone="error"
-        title="Search didn’t go through"
-        action={<button type="button" className="btn btn--ghost" onClick={onRetry}>Search again</button>}
+        title={t('Search didn’t go through')}
+        action={<button type="button" className="btn btn--ghost" onClick={onRetry}>{t('Search again')}</button>}
       >
         {search.error === 'network'
-          ? 'Your connection dropped. Check it and search again.'
-          : ERRORS[search.error] ?? `The server answered with an error (${search.error}). Try again in a minute.`}
+          ? t('Your connection dropped. Check it and search again.')
+          : ERRORS[search.error]
+            ? t(ERRORS[search.error]!)
+            : t('The server answered with an error ({code}). Try again in a minute.', { code: search.error })}
       </Notice>
     )
   }
@@ -48,16 +52,13 @@ export default function SearchView({ query, search, loading, onRetry, inListIds,
   return (
     <>
       <h1 className="section-head">
-        Results for “{query}”
-        <span className="section-head__aside">
-          {search.results.length} {search.results.length === 1 ? 'title' : 'titles'}
-        </span>
+        {t('Results for “{q}”', { q: query })}
+        <span className="section-head__aside">{plural(search.results.length, 'title')}</span>
       </h1>
 
       {search.results.length === 0 ? (
         <p className="muted">
-          Nothing matches “{query}”. Check the spelling or try the Japanese title in romaji, like “Shingeki no
-          Kyojin”.
+          {t('Nothing matches “{q}”. Check the spelling or try the Japanese title in romaji, like “Shingeki no Kyojin”.', { q: query })}
         </p>
       ) : (
         <ul className="poster-grid">

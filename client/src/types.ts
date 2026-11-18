@@ -5,6 +5,22 @@ export interface User {
   id: number
   username: string
   email: string
+  /** Профиль /u/:username открыт всем */
+  is_public?: boolean
+}
+
+export interface ImportResult {
+  total: number
+  added: number
+  updated: number
+  skipped: number
+}
+
+export interface PublicProfile {
+  username: string
+  member_since: string
+  stats: Stats
+  list: Pick<ListEntry, 'anime_id' | 'title' | 'image' | 'episodes' | 'status' | 'score' | 'watched_episodes' | 'finished_at' | 'rewatch_count'>[]
 }
 
 export interface AuthResponse {
@@ -24,9 +40,17 @@ export interface ListEntry {
   score: number | null
   watched_episodes: number
   created_at: string
+  updated_at?: string
+  /** «2026-11-18» */
+  started_at?: string | null
+  finished_at?: string | null
+  notes?: string | null
+  rewatch_count?: number
 }
 
-export type ListPatch = Partial<Pick<ListEntry, 'status' | 'score' | 'watched_episodes'>>
+export type ListPatch = Partial<
+  Pick<ListEntry, 'status' | 'score' | 'watched_episodes' | 'started_at' | 'finished_at' | 'notes' | 'rewatch_count'>
+>
 
 export interface NewListEntry {
   anime_id: number
@@ -84,3 +108,17 @@ export interface Episode {
 export interface Paged<T> {
   data: T[]
 }
+
+export interface CalendarEpisode {
+  anime_id: number
+  title: string
+  title_english: string | null
+  image: string | null
+  episode: number
+  episodes: number | null
+  airing_at: string
+  status: Status
+  watched_episodes: number
+}
+
+export type Recommendation = Anime & { because: string[] }

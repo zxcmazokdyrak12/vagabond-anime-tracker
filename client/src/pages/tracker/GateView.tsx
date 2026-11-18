@@ -7,7 +7,8 @@ import Stamp from '../../components/Stamp'
 import Enso from '../../components/Enso'
 import Notice from '../../components/Notice'
 import { posterOf } from '../../lib/status'
-import type { Anime } from '../../types'
+import type { Anime, Recommendation } from '../../types'
+import { useT } from '../../lib/i18n'
 
 export interface DiscoverState {
   status: 'idle' | 'done' | 'error'
@@ -28,6 +29,7 @@ const HERO_SIZE = 5
 const AUTOPLAY_MS = 8000
 
 function GateHero({ items, inListIds, stampId, onAdd }: AddProps & { items: Anime[] }) {
+  const t = useT()
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
   const anime = items[index]
@@ -47,7 +49,7 @@ function GateHero({ items, inListIds, stampId, onAdd }: AddProps & { items: Anim
   return (
     <section
       aria-roledescription="carousel"
-      aria-label="Highest rated anime"
+      aria-label={t('Highest rated anime')}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
@@ -63,13 +65,13 @@ function GateHero({ items, inListIds, stampId, onAdd }: AddProps & { items: Anim
           transition={{ duration: 0.35 }}
         >
           <Link to={`/anime/${anime.mal_id}`} className="gate-hero__poster" style={{ position: 'relative' }}>
-            <InkImage src={posterOf(anime, true)} alt={`${anime.title} poster`} eager />
+            <InkImage src={posterOf(anime, true)} alt={t('{title} poster', { title: anime.title })} eager />
             <Stamp show={stampId === anime.mal_id} />
           </Link>
 
           <div className="gate-hero__body">
             <p className="gate-hero__rank">
-              <strong>No. {anime.rank || index + 1}</strong> among the highest rated anime
+              <strong>{t('No. {n}', { n: anime.rank || index + 1 })}</strong> {t('among the highest rated anime')}
             </p>
             <h1 className="gate-hero__title">
               <Link to={`/anime/${anime.mal_id}`} style={{ textDecoration: 'none' }}>
@@ -78,33 +80,33 @@ function GateHero({ items, inListIds, stampId, onAdd }: AddProps & { items: Anim
             </h1>
             <dl className="facts">
               {anime.score && (
-                <div><dt>Score</dt><dd>{anime.score}</dd></div>
+                <div><dt>{t('Score')}</dt><dd>{anime.score}</dd></div>
               )}
               {anime.type && (
-                <div><dt>Format</dt><dd>{anime.type}</dd></div>
+                <div><dt>{t('Format')}</dt><dd>{t(anime.type)}</dd></div>
               )}
               {anime.year && (
-                <div><dt>Year</dt><dd>{anime.year}</dd></div>
+                <div><dt>{t('Year')}</dt><dd>{anime.year}</dd></div>
               )}
-              <div><dt>Episodes</dt><dd>{anime.episodes || 'Ongoing'}</dd></div>
+              <div><dt>{t('Episodes')}</dt><dd>{anime.episodes || t('Ongoing')}</dd></div>
             </dl>
             {anime.genres && anime.genres.length > 0 && (
-              <p className="genres">{anime.genres.map((g) => g.name).join(', ')}</p>
+              <p className="genres">{anime.genres.map((g) => t(g.name)).join(', ')}</p>
             )}
             {anime.synopsis && <p className="gate-hero__synopsis">{anime.synopsis}</p>}
 
             <div className="gate-hero__actions">
               <button type="button" className="btn" onClick={() => onAdd(anime)} disabled={inList}>
-                {inList ? 'In your scrolls' : 'Add to scrolls'}
+                {inList ? t('In your scrolls') : t('Add to scrolls')}
               </button>
               <Link to={`/anime/${anime.mal_id}`} className="btn btn--ghost">
-                Open title
+                {t('Open title')}
               </Link>
               <div className="gate-hero__pager">
-                <button type="button" className="icon-btn" onClick={() => go(-1)} aria-label="Previous title">
+                <button type="button" className="icon-btn" onClick={() => go(-1)} aria-label={t('Previous title')}>
                   ‹
                 </button>
-                <button type="button" className="icon-btn" onClick={() => go(1)} aria-label="Next title">
+                <button type="button" className="icon-btn" onClick={() => go(1)} aria-label={t('Next title')}>
                   ›
                 </button>
               </div>
@@ -126,7 +128,7 @@ function GateHero({ items, inListIds, stampId, onAdd }: AddProps & { items: Anim
             type="button"
             onClick={() => setIndex(i)}
             aria-current={i === index ? 'true' : undefined}
-            aria-label={`Show ${a.title}`}
+            aria-label={t('Show {title}', { title: a.title })}
           />
         ))}
       </div>
@@ -140,15 +142,21 @@ export default function GateView({
   inListIds,
   stampId,
   onAdd,
-}: AddProps & { discover: DiscoverState; onRetry: () => void }) {
+  recommendations,
+}: AddProps & {
+  discover: DiscoverState
+  onRetry: () => void
+  recommendations?: { items: Recommendation[]; seeds: string[] } | null
+}) {
+  const t = useT()
   if (discover.status === 'error') {
     return (
       <Notice
         tone="error"
-        title="The catalogue didn't load"
-        action={<button type="button" className="btn btn--ghost" onClick={onRetry}>Try again</button>}
+        title={t('The catalogue didn’t load')}
+        action={<button type="button" className="btn btn--ghost" onClick={onRetry}>{t('Try again')}</button>}
       >
-        The anime catalogue isn't responding. It usually recovers within a minute.
+        {t('The anime catalogue isn’t responding. It usually recovers within a minute.')}
       </Notice>
     )
   }
@@ -164,11 +172,35 @@ export default function GateView({
         onAdd={onAdd}
       />
 
+      {recommendations && recommendations.items.length > 0 && (
+        <section className="section" aria-labelledby="recs-head">
+          <h2 className="section-head" id="recs-head">
+            <span className="brush" aria-hidden="true">薦</span>
+            {t('For you')}
+            <span className="section-head__aside">
+              {t('Because you loved {titles}', { titles: recommendations.seeds.slice(0, 3).join(', ') })}
+            </span>
+          </h2>
+          <ul className="poster-grid poster-grid--row">
+            {recommendations.items.slice(0, 6).map((anime) => (
+              <PosterCard
+                key={anime.mal_id}
+                anime={anime}
+                inList={inListIds.has(anime.mal_id)}
+                stamped={stampId === anime.mal_id}
+                onAdd={onAdd}
+                note={t('Fans of {titles} liked it', { titles: anime.because.join(t(' and ')) })}
+              />
+            ))}
+          </ul>
+        </section>
+      )}
+
       <div className="gate-columns section">
         <section aria-labelledby="season-head">
           <h2 className="section-head" id="season-head">
             <span className="brush" aria-hidden="true">今季</span>
-            This season
+            {t('This season')}
           </h2>
           <ul className="poster-grid">
             {discover.season.map((anime) => (
@@ -186,19 +218,19 @@ export default function GateView({
         <section aria-labelledby="top-head">
           <h2 className="section-head" id="top-head">
             <span className="brush" aria-hidden="true">頂</span>
-            Top ten
+            {t('Top ten')}
           </h2>
           <ol className="rank-list">
             {discover.top.map((anime, i) => (
               <li key={anime.mal_id}>
                 <Link to={`/anime/${anime.mal_id}`}>
-                  <span className="rank-list__n" aria-label={`Rank ${i + 1}`}>{KANJI_NUM[i] || i + 1}</span>
+                  <span className="rank-list__n" aria-label={t('Rank {n}', { n: i + 1 })}>{KANJI_NUM[i] || i + 1}</span>
                   <InkImage src={posterOf(anime)} />
                   <span>
                     <span className="rank-list__title">{anime.title}</span>
                     <br />
                     <span className="rank-list__meta">
-                      {[anime.type, anime.score ? `score ${anime.score}` : null].filter(Boolean).join(', ')}
+                      {[anime.type && t(anime.type), anime.score ? t('score {n}', { n: anime.score }) : null].filter(Boolean).join(', ')}
                     </span>
                   </span>
                 </Link>

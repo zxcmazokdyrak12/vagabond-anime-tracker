@@ -7,6 +7,7 @@ import Stamp from '../components/Stamp'
 import Enso from '../components/Enso'
 import Notice from '../components/Notice'
 import { STATUSES, posterOf } from '../lib/status'
+import { locale, plural, t as tr, useT } from '../lib/i18n'
 import type { Anime, Character, Episode, ListEntry, User } from '../types'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -25,11 +26,12 @@ async function fetchWithRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T>
 }
 
 function Section({ id, glyph, title, children }: { id: string; glyph: string; title: string; children: ReactNode }) {
+  const t = useT()
   return (
     <section className="section" aria-labelledby={id}>
       <h2 className="section-head" id={id}>
         <span className="brush" aria-hidden="true">{glyph}</span>
-        {title}
+        {t(title)}
       </h2>
       {children}
     </section>
@@ -46,6 +48,7 @@ interface LoadState {
 export default function AnimeDetailPage({ user, onLogout }: { user: User; onLogout: () => void }) {
   const { id = '' } = useParams()
   const navigate = useNavigate()
+  const t = useT()
 
   const [state, setState] = useState<LoadState>({ key: null, anime: null, error: null })
   const [characters, setCharacters] = useState<Character[]>([])
@@ -120,7 +123,7 @@ export default function AnimeDetailPage({ user, onLogout }: { user: User; onLogo
 
       <main className="page">
         <button type="button" className="back-link text-btn" onClick={goBack}>
-          Back
+          {t('Back')}
         </button>
 
         {loading ? (
@@ -128,26 +131,26 @@ export default function AnimeDetailPage({ user, onLogout }: { user: User; onLogo
         ) : error ? (
           <Notice
             tone="error"
-            title={error === 'missing' ? 'This title doesn’t exist on MyAnimeList' : 'This title didn’t load'}
+            title={error === 'missing' ? t('This title doesn’t exist on MyAnimeList') : t('This title didn’t load')}
             action={
               error === 'missing' ? (
-                <Link to="/?tab=gate" className="btn btn--ghost">Browse top anime</Link>
+                <Link to="/?tab=gate" className="btn btn--ghost">{t('Browse top anime')}</Link>
               ) : (
                 <button type="button" className="btn btn--ghost" onClick={() => setReloadNonce((n) => n + 1)}>
-                  Try again
+                  {t('Try again')}
                 </button>
               )
             }
           >
             {error === 'missing'
-              ? 'The link may be broken or the entry was removed.'
-              : 'The anime catalogue isn’t responding. It usually recovers within a minute.'}
+              ? t('The link may be broken or the entry was removed.')
+              : t('The anime catalogue isn’t responding. It usually recovers within a minute.')}
           </Notice>
         ) : anime ? (
           <article>
             <header className="detail-hero">
               <div className="detail-hero__poster">
-                <InkImage src={posterOf(anime, true)} alt={`${anime.title} poster`} eager />
+                <InkImage src={posterOf(anime, true)} alt={t('{title} poster', { title: anime.title })} eager />
                 <Stamp show={adding} />
               </div>
 
@@ -155,14 +158,17 @@ export default function AnimeDetailPage({ user, onLogout }: { user: User; onLogo
                 {anime.airing && (
                   <p className="airing">
                     {anime.next_airing
-                      ? `Episode ${anime.next_airing.episode} airs ${new Date(anime.next_airing.at).toLocaleString('en-GB', {
-                          weekday: 'short',
-                          day: 'numeric',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}`
-                      : 'Airing now'}
+                      ? t('Episode {n} airs {when}', {
+                          n: anime.next_airing.episode,
+                          when: new Date(anime.next_airing.at).toLocaleString(locale(), {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          }),
+                        })
+                      : t('Airing now')}
                   </p>
                 )}
                 <h1 className="detail-hero__title">{anime.title_english || anime.title}</h1>
@@ -171,29 +177,32 @@ export default function AnimeDetailPage({ user, onLogout }: { user: User; onLogo
                 )}
 
                 <dl className="facts">
-                  <div><dt>Score</dt><dd>{anime.score ?? '—'}</dd></div>
-                  {anime.rank && <div><dt>Rank</dt><dd>No. {anime.rank}</dd></div>}
-                  {anime.studios?.[0] && <div><dt>Studio</dt><dd>{anime.studios[0].name}</dd></div>}
-                  {anime.year && <div><dt>Year</dt><dd>{anime.year}</dd></div>}
-                  <div><dt>Episodes</dt><dd>{anime.episodes || 'Unknown'}</dd></div>
+                  <div><dt>{t('Score')}</dt><dd>{anime.score ?? '—'}</dd></div>
+                  {anime.rank && <div><dt>{t('Rank')}</dt><dd>{t('No. {n}', { n: anime.rank })}</dd></div>}
+                  {anime.studios?.[0] && <div><dt>{t('Studio')}</dt><dd>{anime.studios[0].name}</dd></div>}
+                  {anime.year && <div><dt>{t('Year')}</dt><dd>{anime.year}</dd></div>}
+                  <div><dt>{t('Episodes')}</dt><dd>{anime.episodes || t('Unknown')}</dd></div>
                 </dl>
 
                 {anime.genres && anime.genres.length > 0 && (
-                  <p className="genres">{anime.genres.map((g) => g.name).join(', ')}</p>
+                  <p className="genres">{anime.genres.map((g) => t(g.name)).join(', ')}</p>
                 )}
 
                 {entry ? (
                   <p>
-                    In your scrolls as{' '}
+                    {t('In your scrolls as')}{' '}
                     <strong className={`status--${entry.status}`}>
-                      {STATUSES[entry.status]?.label.toLowerCase()}
+                      {t(STATUSES[entry.status]?.label ?? '').toLowerCase()}
                     </strong>
-                    {entry.episodes ? `, ${entry.watched_episodes || 0} of ${entry.episodes} episodes` : ''}.{' '}
-                    <Link to="/?tab=scrolls">Open my scrolls</Link>
+                    {entry.episodes
+                      ? `, ${t('{watched} of {total}', { watched: entry.watched_episodes || 0, total: plural(entry.episodes, 'episode') })}`
+                      : ''}
+                    .{' '}
+                    <Link to="/?tab=scrolls">{t('Open my scrolls')}</Link>
                   </p>
                 ) : (
                   <button type="button" className="btn" onClick={handleAdd} disabled={adding}>
-                    {adding ? 'Adding…' : 'Add to scrolls'}
+                    {adding ? t('Adding…') : t('Add to scrolls')}
                   </button>
                 )}
               </div>
@@ -214,7 +223,7 @@ export default function AnimeDetailPage({ user, onLogout }: { user: User; onLogo
                 {anime.trailer?.embed_url && (
                   <Section id="trailer" glyph="予" title="Trailer">
                     <div className="trailer">
-                      <iframe src={anime.trailer.embed_url} title={`${anime.title} trailer`} allowFullScreen loading="lazy" />
+                      <iframe src={anime.trailer.embed_url} title={t('{title} trailer', { title: anime.title })} allowFullScreen loading="lazy" />
                     </div>
                   </Section>
                 )}
@@ -228,8 +237,8 @@ export default function AnimeDetailPage({ user, onLogout }: { user: User; onLogo
                           <div>
                             <p className="char__name">{c.character.name}</p>
                             <p className="char__meta">
-                              {c.role}
-                              {c.voice_actors?.[0] ? `, voiced by ${c.voice_actors[0].person.name}` : ''}
+                              {t(c.role)}
+                              {c.voice_actors?.[0] ? `, ${t('voiced by {name}', { name: c.voice_actors[0].person.name })}` : ''}
                             </p>
                           </div>
                         </li>
@@ -243,11 +252,11 @@ export default function AnimeDetailPage({ user, onLogout }: { user: User; onLogo
                     <ol className="episode-list">
                       {episodes.map((ep) => (
                         <li key={ep.mal_id}>
-                          <span className="episode-list__n" aria-label={`Episode ${ep.mal_id}`}>{ep.mal_id}</span>
+                          <span className="episode-list__n" aria-label={t('Episode {n}', { n: ep.mal_id })}>{ep.mal_id}</span>
                           <span>{ep.title}</span>
                           {ep.aired && (
                             <time className="muted" dateTime={ep.aired}>
-                              {new Date(ep.aired).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              {new Date(ep.aired).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' })}
                             </time>
                           )}
                         </li>
@@ -261,17 +270,17 @@ export default function AnimeDetailPage({ user, onLogout }: { user: User; onLogo
                 <Section id="info" glyph="情" title="Details">
                   <dl className="info-list">
                     {[
-                      ['Format', anime.type],
-                      ['Status', anime.status],
+                      ['Format', anime.type && t(anime.type)],
+                      ['Status', anime.status && t(anime.status)],
                       ['Aired', anime.aired?.string],
-                      ['Source', anime.source],
-                      ['Episode length', anime.duration],
+                      ['Source', anime.source && t(anime.source)],
+                      ['Episode length', anime.duration && tr('{n} min per ep', { n: parseInt(anime.duration, 10) || anime.duration })],
                       ['Rating', anime.rating],
-                      ['In users’ lists', anime.members?.toLocaleString('en')],
+                      ['In users’ lists', anime.members?.toLocaleString(locale())],
                     ]
                       .filter(([, v]) => v)
                       .map(([k, v]) => (
-                        <div key={k}><dt>{k}</dt><dd>{v}</dd></div>
+                        <div key={k}><dt>{t(k!)}</dt><dd>{v}</dd></div>
                       ))}
                   </dl>
                 </Section>
@@ -280,17 +289,17 @@ export default function AnimeDetailPage({ user, onLogout }: { user: User; onLogo
                   <Section id="songs" glyph="歌" title="Theme songs">
                     {openings.length > 0 && (
                       <>
-                        <h3 className="sub-head">Opening</h3>
+                        <h3 className="sub-head">{t('Opening')}</h3>
                         <ul className="song-list">
-                          {openings.map((t, i) => <li key={i}>{t}</li>)}
+                          {openings.map((song, i) => <li key={i}>{song}</li>)}
                         </ul>
                       </>
                     )}
                     {endings.length > 0 && (
                       <>
-                        <h3 className="sub-head">Ending</h3>
+                        <h3 className="sub-head">{t('Ending')}</h3>
                         <ul className="song-list">
-                          {endings.map((t, i) => <li key={i}>{t}</li>)}
+                          {endings.map((song, i) => <li key={i}>{song}</li>)}
                         </ul>
                       </>
                     )}

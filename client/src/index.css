@@ -38,8 +38,9 @@
 }
 
 :root {
-  --font-text: 'Shippori Mincho B1', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
-  --font-brush: 'Yuji Boku', 'Shippori Mincho B1', serif;
+  /* Spectral — только для кириллицы: в Shippori Mincho её нет */
+  --font-text: 'Shippori Mincho B1', 'Spectral', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+  --font-brush: 'Yuji Boku', 'Shippori Mincho B1', 'Spectral', serif;
 
   /* Модульная шкала 1.25 */
   --step--1: 0.8125rem;  /* 13 */
@@ -1593,4 +1594,368 @@ a:focus-visible .ink-frame img,
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ── Свитки: панель, детали строки ──────────────────────────── */
+.scrolls-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  margin-bottom: 2rem;
+}
+
+.scrolls-toolbar .filters {
+  margin-bottom: 0;
+}
+
+.scrolls-toolbar__right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.field--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.scroll-row {
+  position: relative;
+}
+
+.scroll-row:focus-visible {
+  outline: none;
+  box-shadow: inset 3px 0 0 var(--ink);
+  background: color-mix(in srgb, var(--paper-deep) 55%, transparent);
+}
+
+.details-toggle {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--wash);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.details-toggle:hover {
+  color: var(--ink);
+}
+
+.scroll-details {
+  grid-column: 2 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, max-content) minmax(14rem, 1fr);
+  gap: 1rem 1.5rem;
+  align-items: start;
+  padding: 0.75rem 0 0.25rem;
+}
+
+.input-date,
+.input-notes {
+  min-height: 2.5rem;
+  padding: 0.35rem 0.6rem;
+  background: var(--paper-deep);
+  border: none;
+  border-radius: 2px;
+  color: var(--ink);
+  font-size: var(--step--1);
+  color-scheme: inherit;
+}
+
+.input-notes {
+  width: 100%;
+  resize: vertical;
+  line-height: 1.6;
+  font-family: inherit;
+}
+
+.rewatch-count {
+  min-width: 4.5rem;
+  text-align: center;
+  font-size: var(--step--1);
+  color: var(--ink);
+  align-self: center;
+}
+
+.saved-mark {
+  color: var(--ai);
+  margin-left: 0.4rem;
+}
+
+@media (max-width: 960px) {
+  .scroll-details {
+    grid-template-columns: repeat(3, max-content);
+  }
+
+  .scroll-details__notes {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .scroll-details {
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ── Диалог ─────────────────────────────────────────────────── */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.dialog {
+  width: min(34rem, 100%);
+  max-height: calc(100svh - 3rem);
+  overflow: auto;
+  padding: 1.75rem 2rem 2rem;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 3px;
+  box-shadow: 0 24px 60px -20px color-mix(in srgb, var(--ink) 60%, transparent);
+}
+
+.dialog__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.shortcuts dt {
+  display: flex;
+  gap: 0.3rem;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.6rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--line), 0 1px 0 var(--line);
+  font-family: inherit;
+  font-size: 0.8rem;
+  text-align: center;
+  color: var(--ink);
+}
+
+/* ── Импорт ─────────────────────────────────────────────────── */
+.import-steps {
+  margin: 0.5rem 0 1.25rem 1.1rem;
+  font-size: var(--step--1);
+  line-height: 1.7;
+}
+
+.import-steps li + li {
+  margin-top: 0.4rem;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+  font-size: var(--step--1);
+  cursor: pointer;
+}
+
+.check input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--ink);
+}
+
+.import-result {
+  margin-top: 1rem;
+  font-weight: 600;
+}
+
+.share__link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  font-size: var(--step--1);
+}
+
+/* ── Календарь ──────────────────────────────────────────────── */
+.calendar {
+  list-style: none;
+  border-top: 1px solid var(--ink);
+}
+
+.calendar__day {
+  display: grid;
+  grid-template-columns: minmax(12rem, 16rem) 1fr;
+  gap: 1rem 2rem;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.calendar__date {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  align-self: start;
+}
+
+.calendar__kanji {
+  font-size: 3.25rem;
+}
+
+.calendar__title {
+  display: block;
+  font-size: var(--step-1);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.calendar__sub {
+  display: block;
+  font-size: var(--step--1);
+  color: var(--wash);
+}
+
+.calendar__episodes {
+  list-style: none;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.calendar__ep {
+  display: grid;
+  grid-template-columns: 3.25rem 2.75rem 1fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+.calendar__ep .ink-frame {
+  aspect-ratio: 2 / 3;
+}
+
+.calendar__time {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar__meta {
+  font-size: var(--step--1);
+  color: var(--wash);
+}
+
+.calendar__ep.is-aired .calendar__time {
+  color: var(--seal);
+}
+
+@media (max-width: 720px) {
+  .calendar__day {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Рекомендации — одна строка постеров покрупнее */
+.poster-grid--row {
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+}
+
+/* ── Уведомления ────────────────────────────────────────────── */
+.notify {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 2rem;
+  background: var(--paper-deep);
+  border-radius: 3px;
+}
+
+.notify__glyph {
+  font-size: 2.25rem;
+}
+
+.notify__title {
+  font-weight: 800;
+}
+
+.notify__text {
+  font-size: var(--step--1);
+  color: var(--wash);
+  max-width: 44rem;
+}
+
+.notify__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+@media (max-width: 720px) {
+  .notify {
+    grid-template-columns: auto 1fr;
+  }
+
+  .notify__actions {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ── Карточка «Мой путь» ─────────────────────────────────────── */
+.share-card__row {
+  display: grid;
+  grid-template-columns: minmax(12rem, 18rem) 1fr;
+  gap: 2rem;
+  align-items: center;
+}
+
+.share-card__canvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1080 / 1350;
+  border-radius: 3px;
+  box-shadow: 0 18px 40px -24px color-mix(in srgb, var(--ink) 70%, transparent);
+}
+
+@media (max-width: 720px) {
+  .share-card__row {
+    grid-template-columns: 1fr;
+  }
+
+  .share-card__canvas {
+    max-width: 16rem;
+  }
+}
+
+/* ── Переключатель языка ────────────────────────────────────── */
+.lang-switch {
+  display: inline-flex;
+  gap: 0.15rem;
+}
+
+.lang-switch button {
+  min-width: 2.1rem;
+  min-height: 1.9rem;
+  padding: 0 0.35rem;
+  border-radius: 2px;
+  font-size: 0.75rem;
+  color: var(--wash);
+}
+
+.lang-switch button:hover {
+  color: var(--ink);
+}
+
+.lang-switch button[aria-pressed='true'] {
+  color: var(--ink);
+  box-shadow: inset 0 -2px 0 var(--ink);
 }

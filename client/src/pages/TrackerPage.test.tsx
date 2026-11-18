@@ -14,7 +14,7 @@ const user = { id: 1, username: 'musashi', email: 'm@v.jp' }
 function renderAt(url: string) {
   render(
     <MemoryRouter initialEntries={[url]}>
-      <TrackerPage user={user} onLogout={() => {}} />
+      <TrackerPage user={user} onLogout={() => {}} onUserChange={() => {}} />
     </MemoryRouter>
   )
 }

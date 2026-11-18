@@ -46,7 +46,15 @@
 * **THE GATE (門):** the top five titles with their Japanese names written vertically like a scroll inscription, this season's anime and the top ten ranked in kanji numerals.
 * **MY SCROLLS (巻):** status filters with counts, a progress stroke that grows with each episode, −/+ buttons, status and score inline. Finishing the last episode marks the title completed.
 * **THE PATH (道):** raw SQL aggregates rendered as four large kanji (**観, 完, 計, 棄**), a proportion bar and your hours on the road.
-* **Resilient API handling:** Jikan 429/5xx responses are retried automatically, and every failure explains what happened with a retry action.
+* **THIS WEEK (暦):** new episodes of what you watch or plan, day by day, with how many you're behind.
+* **For you:** recommendations weighted by the titles you scored highest, built from AniList's community recommendations.
+* **Episode notifications:** an installable app (PWA) with push notifications when a new episode of something you're watching airs, even with the tracker closed.
+* **Dates, notes and rewatches** for every title, plus sorting by added, updated, title, score or progress.
+* **Import from MyAnimeList or Shikimori:** bring a whole list over in one go (XML, `.xml.gz` or JSON).
+* **A public path:** open your profile at `/u/<name>` (notes stay private) and save your path as a picture for stories and chats, in the current theme.
+* **Three languages:** English, Русский and 日本語, with proper plural forms (1 серия, 3 серии, 5 серий) and counters (28話).
+* **Keyboard:** `/` jumps to search, `?` lists the shortcuts, and in My scrolls `j`/`k` move between titles, `+`/`-` count episodes, `1`–`4` set the status.
+* **Resilient API handling:** catalogue errors are retried automatically, and every failure explains what happened with a retry action.
 * **Accessible by default:** keyboard focus, labelled controls, `prefers-reduced-motion` respected, responsive down to phones. The current tab and search live in the URL, so Back works as expected.
 
 ---
@@ -65,8 +73,10 @@
 ```text
 Browser ──► Express API ──► PostgreSQL (raw SQL, migrations)
                 │
-                └──► cached client ──► Jikan (MyAnimeList) / AniList
-                     TTL cache · request coalescing · throttled queue · retries
+                ├──► cached client ──► AniList (main) / Jikan (fallback)
+                │    TTL cache · request coalescing · throttled queue · retries
+                └──► web-push ──► browser push services
+GitHub Actions (hourly) ──► /internal/notify-airing
 ```
 
 ### Frontend
@@ -79,13 +89,14 @@ Browser ──► Express API ──► PostgreSQL (raw SQL, migrations)
 ### Backend
 * **Raw SQL** with parameterised queries: `COALESCE`/`CASE` partial updates, `LEAST()` clamping, `FILTER` aggregates for stats.
 * **Migrations:** a 50-line migrator applies `migrations/NNN_*.sql` in transactions under a Postgres advisory lock and records them in `schema_migrations`. Constraints are added `NOT VALID`, so existing rows never block a deploy.
-* **Catalogue proxy:** the browser never calls Jikan directly. The server caches responses (TTL), merges identical in-flight requests, queues calls to stay under Jikan's ~3 req/s limit and retries 429/5xx. Search uses AniList and falls back to Jikan.
+* **Catalogue proxy:** the browser never calls the catalogues directly. The server caches responses (TTL), merges identical in-flight requests, queues calls to stay under rate limits and retries network errors and 429/5xx. AniList is the main source, Jikan the fallback.
+* **Push notifications:** VAPID keys, up to five devices per user, dead subscriptions removed on 404/410, and each episode sent only once. An hourly GitHub Actions job triggers the check.
 * **Security:** bcrypt hashing, JWT auth, `helmet` headers, rate limiting of failed sign-ins per IP, identical errors for unknown email and wrong password, validation in code *and* database `CHECK`s, users isolated at the query level.
 * **Operational:** central error handling (upstream 404 → 404, 429/5xx → 502), graceful shutdown on `SIGTERM`.
 
 ### Quality
-* **56 automated tests.** Server: 26 API and unit tests (Vitest + Supertest) against a real PostgreSQL: auth, rate limiting, list CRUD, cross-user isolation, stats, migrations, cache behaviour. Client: 30 component and integration tests (Vitest + Testing Library).
-* **CI on every pull request:** lint, typecheck, tests and build for both apps, plus a boot check that starts the server exactly like Render does.
+* **108 automated tests.** Server: 46 API and unit tests (Vitest + Supertest) against a real PostgreSQL: auth, rate limiting, list CRUD, import, public profiles, push, calendar, recommendations, migrations, cache behaviour. Client: 54 component and unit tests (Vitest + Testing Library), including i18n. E2E: 8 browser scenarios (Playwright) on the real server, database and built client, with the catalogue replaced by a local mock.
+* **CI on every pull request:** lint, typecheck, tests and build for both apps, a boot check that starts the server exactly like Render does, then the E2E run.
 
 ---
 
@@ -93,23 +104,25 @@ Browser ──► Express API ──► PostgreSQL (raw SQL, migrations)
 
 ```text
 vagabond-anime-tracker/
-├── .github/workflows/ci.yml
+├── .github/workflows/       # ci.yml, notify-airing.yml (hourly)
+├── e2e/                       # Playwright scenarios + catalogue mock
 ├── client/                    # React + Vite + TypeScript
+│   ├── public/                # manifest, service worker, icons
 │   └── src/
 │       ├── api/               # typed Axios client
 │       ├── components/        # Masthead, InkImage, Stamp, Enso loader, PosterCard…
 │       ├── pages/             # Auth, AnimeDetail, Tracker + tracker/ views (with tests)
-│       ├── lib/               # status constants, theme hook
+│       ├── lib/               # i18n + translations, sorting, calendar, push, share card
 │       ├── types.ts           # API and catalogue types
 │       └── index.css          # design tokens and all styles (paper / night)
 └── server/                    # Node.js + Express + PostgreSQL, TypeScript
-    ├── migrations/            # 001_initial.sql, 002_list_constraints.sql
+    ├── migrations/            # 001–005: schema, constraints, details, public profiles, push
     ├── src/
     │   ├── app.ts             # express app factory (dependencies injected for tests)
     │   ├── index.ts           # boot: config → migrations → listen
     │   ├── migrate.ts         # SQL migrator
     │   ├── lib/               # auth, validation, cached HTTP client
-    │   └── routes/            # auth, list + stats, anime catalogue
+    │   └── routes/            # auth, list + import, public, discover, push, catalogue
     ├── tests/                 # API and cache tests
     └── server.js              # entry for `node server.js` (imports dist/)
 ```
@@ -159,7 +172,13 @@ npm run typecheck
 
 # client
 cd ../client && npm run lint && npm run typecheck && npm test
+
+# e2e: starts the mock catalogue, the server and the built client itself
+cd ../e2e && npm install && npx playwright install chromium
+E2E_DATABASE_URL=postgresql://user:pass@localhost/vagabond_e2e npx playwright test
 ```
+
+Push notifications need `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` on the server (`npx web-push generate-vapid-keys`). Without them the feature simply stays off.
 
 ---
 

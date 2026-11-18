@@ -2,6 +2,8 @@ import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { motion } from 'framer-motion'
 import { login, register } from '../api'
 import { useTheme } from '../lib/useTheme'
+import { useT } from '../lib/i18n'
+import LangSwitch from '../components/LangSwitch'
 import { errorStatus } from '../api'
 import type { User } from '../types'
 import axios from 'axios'
@@ -36,7 +38,11 @@ export default function AuthPage({ onLogin }: { onLogin: (user: User, token: str
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { theme, toggle } = useTheme()
-  const copy = COPY[mode]!
+  const t = useT()
+  const copy = Object.fromEntries(Object.entries(COPY[mode]!).map(([k, v]) => [k, k === 'glyph' ? v : t(v)])) as Record<
+    string,
+    string
+  >
 
   const set = (field: Field) => (e: ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [field]: e.target.value }))
 
@@ -50,10 +56,10 @@ export default function AuthPage({ onLogin }: { onLogin: (user: User, token: str
     } catch (err) {
       const serverMessage = axios.isAxiosError(err) ? (err.response?.data as { error?: string })?.error : undefined
       setError(
-        serverMessage ||
+        (serverMessage && t(serverMessage)) ||
           (errorStatus(err) === 'network'
-            ? 'No connection. Check your network and try again.'
-            : 'The server couldn’t sign you in. Try again in a minute.')
+            ? t('No connection. Check your network and try again.')
+            : t('The server couldn’t sign you in. Try again in a minute.'))
       )
     } finally {
       setLoading(false)
@@ -78,7 +84,7 @@ export default function AuthPage({ onLogin }: { onLogin: (user: User, token: str
           {copy.glyph}
         </motion.span>
         <p className="auth__caption">
-          A tracker for the anime you watch, drawn in ink after Takehiko Inoue’s Vagabond.
+          {t('A tracker for the anime you watch, drawn in ink after Takehiko Inoue’s Vagabond.')}
         </p>
       </div>
 
@@ -98,7 +104,7 @@ export default function AuthPage({ onLogin }: { onLogin: (user: User, token: str
           <div className="auth__fields">
             {mode === 'register' && (
               <div className="input-field">
-                <label htmlFor="username">Warrior name</label>
+                <label htmlFor="username">{t('Warrior name')}</label>
                 <input
                   id="username"
                   autoComplete="username"
@@ -108,15 +114,15 @@ export default function AuthPage({ onLogin }: { onLogin: (user: User, token: str
                   minLength={2}
                   maxLength={32}
                 />
-                <small>Shown on your profile, 2 to 32 characters.</small>
+                <small>{t('Shown on your profile, 2 to 32 characters.')}</small>
               </div>
             )}
             <div className="input-field">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email">{t('Email')}</label>
               <input id="email" type="email" autoComplete="email" value={form.email} onChange={set('email')} required />
             </div>
             <div className="input-field">
-              <label htmlFor="password">Password</label>
+              <label htmlFor="password">{t('Password')}</label>
               <input
                 id="password"
                 type="password"
@@ -126,7 +132,7 @@ export default function AuthPage({ onLogin }: { onLogin: (user: User, token: str
                 required
                 minLength={6}
               />
-              {mode === 'register' && <small>At least 6 characters.</small>}
+              {mode === 'register' && <small>{t('At least 6 characters.')}</small>}
             </div>
           </div>
 
@@ -150,9 +156,13 @@ export default function AuthPage({ onLogin }: { onLogin: (user: User, token: str
           <p className="auth__switch">
             <button type="button" className="theme-toggle" onClick={toggle} style={{ fontWeight: 400, textDecoration: 'none' }}>
               <span className="brush" aria-hidden="true">{theme === 'night' ? '紙' : '夜'}</span>
-              {theme === 'night' ? 'Paper theme' : 'Night theme'}
+              {theme === 'night' ? t('Paper theme') : t('Night theme')}
             </button>
           </p>
+
+          <div className="auth__switch">
+            <LangSwitch />
+          </div>
         </form>
       </div>
     </main>

@@ -3,6 +3,7 @@ import InkImage from './InkImage'
 import Stamp from './Stamp'
 import { posterOf } from '../lib/status'
 import type { Anime } from '../types'
+import { useT } from '../lib/i18n'
 
 interface Props {
   anime: Anime
@@ -10,13 +11,17 @@ interface Props {
   /** Сейчас на постер ставится печать «録» */
   stamped: boolean
   onAdd: (anime: Anime) => void
+  /** Строка-пояснение под названием, например «почему рекомендуем» */
+  note?: string
 }
 
 // Постер тайтла в сетке: картинка-ссылка, название, кнопка «в свитки»
-export default function PosterCard({ anime, inList, stamped, onAdd }: Props) {
-  const meta = [anime.score ? `Score ${anime.score}` : null, anime.episodes ? `${anime.episodes} ep.` : null].filter(
-    Boolean
-  )
+export default function PosterCard({ anime, inList, stamped, onAdd, note }: Props) {
+  const t = useT()
+  const meta = [
+    anime.score ? t('Score {n}', { n: anime.score }) : null,
+    anime.episodes ? t('{n} ep.', { n: anime.episodes }) : null,
+  ].filter(Boolean)
 
   return (
     <li className="poster">
@@ -24,16 +29,16 @@ export default function PosterCard({ anime, inList, stamped, onAdd }: Props) {
         <InkImage src={posterOf(anime)} />
         <span className="poster__title">{anime.title}</span>
       </Link>
-      <span className="poster__meta">{meta.length ? meta.join(', ') : ' '}</span>
+      <span className="poster__meta">{note ?? (meta.length ? meta.join(', ') : '\u00a0')}</span>
       <Stamp show={stamped} />
       <button
         type="button"
         className="btn btn--ghost btn--small"
         onClick={() => onAdd(anime)}
         disabled={inList}
-        aria-label={inList ? `${anime.title} is in your scrolls` : `Add ${anime.title} to scrolls`}
+        aria-label={inList ? t('{title} is in your scrolls', { title: anime.title }) : t('Add {title} to scrolls', { title: anime.title })}
       >
-        {inList ? 'In your scrolls' : 'Add to scrolls'}
+        {inList ? t('In your scrolls') : t('Add to scrolls')}
       </button>
     </li>
   )

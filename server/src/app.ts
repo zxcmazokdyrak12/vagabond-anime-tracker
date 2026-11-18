@@ -8,17 +8,24 @@ import { axiosHttp, UpstreamError, type Http } from './lib/http.js'
 import { authRouter } from './routes/auth.js'
 import { listRouter } from './routes/list.js'
 import { animeRouter } from './routes/anime.js'
+import { publicRouter } from './routes/public.js'
+import { discoverRouter } from './routes/discover.js'
+import { pushRouter, webPushSender } from './routes/push.js'
+import type { SendPush } from './lib/notifier.js'
 
 export interface AppDeps {
   db: Db
-  config: Pick<Config, 'jwtSecret' | 'clientOrigins' | 'authAttemptsPer15Min'>
+  config: Pick<Config, 'jwtSecret' | 'clientOrigins' | 'authAttemptsPer15Min'> & Partial<Pick<Config, 'push' | 'cronSecret'>>
+  /** Отправка пушей; в тестах — фейк */
+  sendPush?: SendPush
+  notifyEveryMs?: number
   /** Внешний HTTP; в тестах подменяется фейком */
   http?: Http
   /** Пауза между запросами к внешним каталогам; в тестах 0 */
   upstreamIntervalMs?: number
 }
 
-export function createApp({ db, config, http = axiosHttp, upstreamIntervalMs }: AppDeps) {
+export function createApp({ db, config, http = axiosHttp, upstreamIntervalMs, sendPush, notifyEveryMs }: AppDeps) {
   const app = express()
   // AniList — основной каталог (до 90 запросов в минуту), Jikan — запасной, одна попытка
   const anilist = createCachedClient({ http, minIntervalMs: upstreamIntervalMs ?? 700, retries: 2 })
@@ -35,7 +42,21 @@ export function createApp({ db, config, http = axiosHttp, upstreamIntervalMs }: 
   })
   app.use('/auth', authRouter({ db, jwtSecret: config.jwtSecret, attemptsPer15Min: config.authAttemptsPer15Min }))
   app.use('/api/anime', animeRouter({ anilist, jikan }))
-  app.use('/', listRouter({ db, jwtSecret: config.jwtSecret }))
+  app.use('/public', publicRouter({ db }))
+  app.use('/', listRouter({ db, jwtSecret: config.jwtSecret, anilist }))
+  app.use('/', discoverRouter({ db, jwtSecret: config.jwtSecret, anilist }))
+  app.use(
+    '/',
+    pushRouter({
+      db,
+      jwtSecret: config.jwtSecret,
+      anilist,
+      publicKey: config.push?.publicKey ?? null,
+      cronSecret: config.cronSecret ?? null,
+      send: sendPush ?? (config.push ? webPushSender(config.push) : null),
+      notifyEveryMs,
+    })
+  )
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'Not found' })

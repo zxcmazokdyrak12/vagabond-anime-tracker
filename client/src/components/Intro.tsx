@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'rea
 import { motion, useReducedMotion } from 'framer-motion'
 import { API_URL } from '../api'
 import { useServerWake } from '../lib/useServerWake'
+import { useT } from '../lib/i18n'
 
 /** Сколько длится разрез — после него заставка убирается */
 export const CUT_MS = 900
@@ -91,6 +92,7 @@ function Sheet({ side }: { side: 'whole' | 'a' | 'b' }) {
 }
 
 export default function Intro({ onDone }: Props) {
+  const t = useT()
   const { status, elapsed } = useServerWake(API_URL)
   const [cut, setCut] = useState(false)
   const [stroke, setStroke] = useState<Stroke | null>(null)
@@ -208,18 +210,18 @@ export default function Intro({ onDone }: Props) {
           </span>
           <span className="intro__wake-text">
             {status === 'ready'
-              ? 'The server is awake.'
+              ? t('The server is awake.')
               : status === 'unreachable'
-                ? 'The server isn’t answering. You can still go in and try again inside.'
-                : `Waking the server, ${elapsed} s. Free hosting sleeps when idle, so this can take up to a minute.`}
+                ? t('The server isn’t answering. You can still go in and try again inside.')
+                : t('Waking the server, {s} s. Free hosting sleeps when idle, so this can take up to a minute.', { s: elapsed })}
           </span>
         </div>
 
         <button type="button" className="intro__enter" onClick={enter}>
           <span className="intro__blade-mark" aria-hidden="true" />
-          Enter
+          {t('Enter')}
         </button>
-        <p className="intro__hint">Drag across the screen to cut through, or press Enter. Esc skips.</p>
+        <p className="intro__hint">{t('Drag across the screen to cut through, or press Enter. Esc skips.')}</p>
       </motion.div>
     </div>
   )
