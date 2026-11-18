@@ -473,6 +473,11 @@ describe('public profiles', () => {
     expect(pub.body).toMatchObject({ username: 'Sukeroku', stats: { completed: 1, avg_score: 9 } })
     expect(pub.body.list[0]).toMatchObject({ anime_id: 1, score: 9 })
     expect(pub.body.list[0].notes).toBeUndefined()
+    // Не кэшируется: закрытие пути должно действовать сразу
+    expect(pub.headers['cache-control']).toBe('no-store')
+
+    await request(app).patch('/auth/me').set(auth).send({ is_public: false })
+    expect((await request(app).get('/public/sukeroku')).status).toBe(404)
 
     expect((await request(app).patch('/auth/me').set(auth).send({ is_public: 'yes' })).status).toBe(400)
   })

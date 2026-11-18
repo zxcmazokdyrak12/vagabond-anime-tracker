@@ -3,7 +3,8 @@
  * Ключ — MAL id (idMal): им пользуется весь трекер, включая сохранённые свитки.
  */
 
-export const ANILIST_URL = 'https://graphql.anilist.co'
+/** Адрес можно подменить для E2E-тестов (там поднимается мок каталога) */
+export const ANILIST_URL = process.env.ANILIST_URL || 'https://graphql.anilist.co'
 
 const MEDIA_FIELDS = `
   id idMal

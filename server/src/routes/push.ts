@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import webpush from 'web-push'
+import * as webpush from 'web-push'
 import type { Config } from '../config.js'
 import type { Db } from '../db.js'
 import { asyncHandler, requireAuth, type AuthedRequest } from '../lib/auth.js'

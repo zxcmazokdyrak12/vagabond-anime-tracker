@@ -8,7 +8,7 @@ import {
   type AniMedia,
 } from '../lib/anilist.js'
 
-const JIKAN = 'https://api.jikan.moe/v4'
+const JIKAN = process.env.JIKAN_URL || 'https://api.jikan.moe/v4'
 const MIN = 60 * 1000
 const HOUR = 60 * MIN
 

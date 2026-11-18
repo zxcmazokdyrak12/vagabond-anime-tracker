@@ -27,7 +27,8 @@ export function publicRouter({ db }: { db: Db }) {
         ),
         db.query(STATS_SQL, [user.id]),
       ])
-      res.set('Cache-Control', 'public, max-age=60')
+      // Без кэша: если владелец закрыл путь, это должно сработать сразу
+      res.set('Cache-Control', 'no-store')
       res.json({ username: user.username, member_since: user.created_at, stats: stats.rows[0], list: list.rows })
     })
   )

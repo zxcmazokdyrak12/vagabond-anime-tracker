@@ -4,3 +4,5 @@ node_modules/
 !.env.example
 dist/
 .DS_Store
+test-results/
+playwright-report/
