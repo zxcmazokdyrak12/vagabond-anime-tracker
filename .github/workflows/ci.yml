@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    name: Server — typecheck, tests, boot
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: vagabond_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://test:test@localhost:5432/vagabond_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      # postinstall собирает dist/ — так же, как `npm install` на Render
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      # Запускаем ровно той командой, что и Render, и проверяем, что сервер ответил
+      - name: Boot like Render
+        run: |
+          DATABASE_URL=$TEST_DATABASE_URL JWT_SECRET=ci PORT=3002 node server.js &
+          for i in $(seq 1 20); do curl -fs http://localhost:3002/ping && exit 0; sleep 1; done
+          exit 1
+
+  client:
+    name: Client — lint, typecheck, tests, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
