@@ -4,6 +4,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import BrushStroke from './BrushStroke'
 import ShortcutsDialog from './ShortcutsDialog'
+import LangSwitch from './LangSwitch'
+import { useT } from '../lib/i18n'
 import { useTheme } from '../lib/useTheme'
 
 const TABS: { id: TabId; glyph: string; label: string }[] = [
@@ -14,8 +16,9 @@ const TABS: { id: TabId; glyph: string; label: string }[] = [
 ]
 
 export function Wordmark() {
+  const t = useT()
   return (
-    <Link to="/" className="wordmark" aria-label="Vagabond Tracker, home">
+    <Link to="/" className="wordmark" aria-label={t('Vagabond Tracker, home')}>
       <span className="wordmark__seal" aria-hidden="true">武</span>
       <span className="wordmark__name">
         Vagabond
@@ -37,6 +40,7 @@ interface Props {
 }
 
 export default function Masthead({ user, onLogout, activeTab, initialQuery = '', scrollCount = 0 }: Props) {
+  const t = useT()
   const navigate = useNavigate()
   const { theme, toggle } = useTheme()
   const [query, setQuery] = useState(initialQuery)
@@ -92,17 +96,17 @@ export default function Masthead({ user, onLogout, activeTab, initialQuery = '',
 
         <form className="search" role="search" onSubmit={submit}>
           <label htmlFor="site-search" className="visually-hidden">
-            Search anime
+            {t('Search anime')}
           </label>
           <input
             ref={searchRef}
             id="site-search"
             type="search"
-            placeholder="Search anime by title"
+            placeholder={t('Search anime by title')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <button type="submit">Search</button>
+          <button type="submit">{t('Search')}</button>
         </form>
 
         <div className="masthead__user">
@@ -111,8 +115,8 @@ export default function Masthead({ user, onLogout, activeTab, initialQuery = '',
             type="button"
             className="theme-toggle"
             onClick={toggle}
-            aria-label={theme === 'night' ? 'Switch to paper theme' : 'Switch to night theme'}
-            title={theme === 'night' ? 'Paper' : 'Night'}
+            aria-label={theme === 'night' ? t('Switch to paper theme') : t('Switch to night theme')}
+            title={theme === 'night' ? t('Paper') : t('Night')}
           >
             <span className="brush" aria-hidden="true">{theme === 'night' ? '紙' : '夜'}</span>
           </button>
@@ -121,12 +125,13 @@ export default function Masthead({ user, onLogout, activeTab, initialQuery = '',
             className="text-btn"
             onClick={() => setShowKeys(true)}
             aria-keyshortcuts="?"
-            title="Keyboard shortcuts (?)"
+            title={t('Keyboard shortcuts (?)')}
           >
-            Keys
+            {t('Keys')}
           </button>
+          <LangSwitch />
           <button type="button" className="text-btn" onClick={onLogout}>
-            Sign out
+            {t('Sign out')}
           </button>
         </div>
       </div>
@@ -135,7 +140,7 @@ export default function Masthead({ user, onLogout, activeTab, initialQuery = '',
 
       <BrushStroke />
 
-      <nav className="nav" aria-label="Sections">
+      <nav className="nav" aria-label={t('Sections')}>
         {TABS.map((tab) => (
           <Link
             key={tab.id}
@@ -144,7 +149,7 @@ export default function Masthead({ user, onLogout, activeTab, initialQuery = '',
             aria-current={activeTab === tab.id ? 'page' : undefined}
           >
             <span className="nav__glyph brush" aria-hidden="true">{tab.glyph}</span>
-            <span className="nav__label">{tab.label}</span>
+            <span className="nav__label">{t(tab.label)}</span>
             {tab.id === 'scrolls' && scrollCount > 0 && (
               <span className="nav__count">{scrollCount}</span>
             )}

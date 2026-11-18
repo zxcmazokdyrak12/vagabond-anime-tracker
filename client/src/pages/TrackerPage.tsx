@@ -16,6 +16,7 @@ import { posterOf } from '../lib/status'
 import { ImportButton } from '../components/ImportDialog'
 import ShareProfile from '../components/ShareProfile'
 import ShareCard from '../components/ShareCard'
+import { t } from '../lib/i18n'
 import type { Anime, ListEntry, ListPatch, Recommendation, Stats, User } from '../types'
 
 const TAB_IDS: TabId[] = ['gate', 'scrolls', 'path', 'calendar', 'search']
@@ -204,7 +205,8 @@ export default function TrackerPage({ user, onLogout, onUserChange }: Props) {
   }
 
   const handleDelete = async (entry: ListEntry) => {
-    if (!window.confirm(`Remove “${entry.title}” from your scrolls? Its progress and score will be lost.`)) return
+    if (!window.confirm(t('Remove “{title}” from your scrolls? Its progress and score will be lost.', { title: entry.title })))
+      return
     setList((prev) => prev.filter((item) => item.anime_id !== entry.anime_id))
     try {
       await deleteAnime(entry.anime_id)

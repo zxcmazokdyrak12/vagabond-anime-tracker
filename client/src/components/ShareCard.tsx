@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { canvasToBlob, drawPathCard } from '../lib/shareCard'
 import type { ListEntry, Stats } from '../types'
+import { getLang, useT } from '../lib/i18n'
 
 interface Props {
   username: string
@@ -12,6 +13,8 @@ interface Props {
 
 /** Карточка «Мой путь» картинкой: сохранить или отправить в сторис/мессенджер */
 export default function ShareCard({ username, stats, list, hours, isPublic }: Props) {
+  const t = useT()
+  const lang = getLang()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [ready, setReady] = useState(false)
   const [note, setNote] = useState('')
@@ -33,7 +36,7 @@ export default function ShareCard({ username, stats, list, hours, isPublic }: Pr
     }
     // favourites пересчитываются каждый рендер — сравниваем по ключу
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [username, stats, favKey, hours, url])
+  }, [username, stats, favKey, hours, url, lang])
 
   const fileName = `vagabond-path-${username}.png`
 
@@ -50,9 +53,9 @@ export default function ShareCard({ username, stats, list, hours, isPublic }: Pr
     const blob = await canvasToBlob(canvasRef.current!)
     const file = new File([blob], fileName, { type: 'image/png' })
     try {
-      await navigator.share({ files: [file], title: 'My path', text: isPublic ? url : undefined })
+      await navigator.share({ files: [file], title: t('My path'), text: isPublic ? url : undefined })
     } catch (err) {
-      if ((err as Error).name !== 'AbortError') setNote('Sharing didn’t work here. Save the image instead.')
+      if ((err as Error).name !== 'AbortError') setNote(t('Sharing didn’t work here. Save the image instead.'))
     }
   }
 
@@ -64,21 +67,21 @@ export default function ShareCard({ username, stats, list, hours, isPublic }: Pr
     <section className="section share-card" aria-labelledby="card-head">
       <h2 className="section-head" id="card-head">
         <span className="brush" aria-hidden="true">絵</span>
-        Your path as a picture
+        {t('Your path as a picture')}
       </h2>
       <div className="share-card__row">
-        <canvas ref={canvasRef} className="share-card__canvas" role="img" aria-label={`Path card for ${username}`} />
+        <canvas ref={canvasRef} className="share-card__canvas" role="img" aria-label={t('Path card for {name}', { name: username })} />
         <div>
           <p className="lede" style={{ marginBottom: '1.25rem' }}>
-            A card for stories and chats, in the current theme. Switch to night first for a dark one.
+            {t('A card for stories and chats, in the current theme. Switch to night first for a dark one.')}
           </p>
           <div className="gate-hero__actions">
             <button type="button" className="btn" onClick={download} disabled={!ready}>
-              Save image
+              {t('Save image')}
             </button>
             {canShareFiles && (
               <button type="button" className="btn btn--ghost" onClick={share} disabled={!ready}>
-                Share
+                {t('Share')}
               </button>
             )}
           </div>

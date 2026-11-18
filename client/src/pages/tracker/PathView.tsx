@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import Enso from '../../components/Enso'
-import { STATUSES, STATUS_KEYS } from '../../lib/status'
+import { STATUSES, STATUS_KEYS, plural } from '../../lib/status'
+import { pluralWord, useT } from '../../lib/i18n'
 import type { Stats } from '../../types'
 import type { ReactNode } from 'react'
 
@@ -14,23 +15,23 @@ interface Props {
 }
 
 export default function PathView({ stats, footer, owner }: Props) {
+  const t = useT()
   if (!stats) return <Enso label="Tracing your path…" />
 
   const total = STATUS_KEYS.reduce((sum, k) => sum + (stats[k] || 0), 0)
 
-  if (total === 0 && owner) return <p className="muted">{owner} hasn’t added any titles yet.</p>
+  if (total === 0 && owner) return <p className="muted">{t('{name} hasn’t added any titles yet.', { name: owner })}</p>
 
   if (total === 0) {
     return (
       <div className="empty">
         <span className="brush" aria-hidden="true">道</span>
         <div>
-          <h1 className="page-title">Your path starts with one title</h1>
+          <h1 className="page-title">{t('Your path starts with one title')}</h1>
           <p className="lede" style={{ marginBottom: '1.5rem' }}>
-            Add anime to your scrolls and this page will count what you’re watching, what you finished and what you
-            left behind.
+            {t('Add anime to your scrolls and this page will count what you’re watching, what you finished and what you left behind.')}
           </p>
-          <Link to="/?tab=gate" className="btn">Browse top anime</Link>
+          <Link to="/?tab=gate" className="btn">{t('Browse top anime')}</Link>
         </div>
       </div>
     )
@@ -40,7 +41,7 @@ export default function PathView({ stats, footer, owner }: Props) {
 
   return (
     <>
-      <h1 className="visually-hidden">The path so far</h1>
+      <h1 className="visually-hidden">{t('The path so far')}</h1>
 
       <div className="path-glyphs">
         {STATUS_KEYS.map((k) => (
@@ -49,30 +50,33 @@ export default function PathView({ stats, footer, owner }: Props) {
               {STATUSES[k].glyph}
             </span>
             <span className="path-glyph__value">{stats[k] || 0}</span>
-            <span className="path-glyph__label">{STATUSES[k].label}</span>
+            <span className="path-glyph__label">{t(STATUSES[k].label)}</span>
           </div>
         ))}
       </div>
 
-      <div className="path-bar" role="img" aria-label={STATUS_KEYS.map((k) => `${STATUSES[k].label}: ${stats[k] || 0}`).join(', ')}>
+      <div className="path-bar" role="img" aria-label={STATUS_KEYS.map((k) => `${t(STATUSES[k].label)}: ${stats[k] || 0}`).join(', ')}>
         {STATUS_KEYS.map((k) =>
           stats[k] ? <span key={k} className={`is-${k}`} style={{ flexGrow: stats[k] }} /> : null
         )}
       </div>
       <p className="muted" style={{ fontSize: 'var(--step--1)' }}>
-        {total} {total === 1 ? 'title' : 'titles'} in {owner ? 'their' : 'your'} scrolls
+        {owner ? t('{titles} in their scrolls', { titles: plural(total, 'title') }) : t('{titles} in your scrolls', { titles: plural(total, 'title') })}
       </p>
 
       <p className="path-summary">
-        {owner ? `${owner} has` : 'You’ve'} watched <strong>{stats.total_episodes || 0}</strong> episodes, roughly {hours}{' '}
-        {hours === 1 ? 'hour' : 'hours'} on the road.
+        {owner ? t('{name} has watched', { name: owner }) : t('You’ve watched')} <strong>{stats.total_episodes || 0}</strong>{' '}
+        {pluralWord(stats.total_episodes || 0, 'episode')}
+        {t(', roughly {hours} on the road.', { hours: plural(hours, 'hour') })}
         {stats.avg_score ? (
           <>
             {' '}
-            {owner ? 'Their' : 'Your'} average score is <strong>{stats.avg_score}</strong>.
+            {owner ? t('Their average score is') : t('Your average score is')} <strong>{stats.avg_score}</strong>.
           </>
+        ) : owner ? (
+          ''
         ) : (
-          owner ? '' : ' Score a few titles to see your average.'
+          ` ${t('Score a few titles to see your average.')}`
         )}
       </p>
 

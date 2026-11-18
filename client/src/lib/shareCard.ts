@@ -1,5 +1,6 @@
 import { STATUSES, STATUS_KEYS } from './status'
 import type { ListEntry, Stats } from '../types'
+import { plural, pluralWord, t } from './i18n'
 
 export const CARD_W = 1080
 export const CARD_H = 1350
@@ -100,7 +101,7 @@ export async function drawPathCard(canvas: HTMLCanvasElement, data: CardData) {
   ctx.fillStyle = c.wash
   ctx.font = `400 30px ${TEXT}`
   ctx.fillText('Vagabond Tracker', pad + 116, pad + 34)
-  ctx.fillText('The path so far', pad + 116, pad + 76)
+  ctx.fillText(t('The path so far'), pad + 116, pad + 76)
 
   ctx.fillStyle = c.ink
   ctx.font = `800 92px ${TEXT}`
@@ -120,21 +121,24 @@ export async function drawPathCard(canvas: HTMLCanvasElement, data: CardData) {
     ctx.fillText(String(data.stats[k] ?? 0), x, pad + 600)
     ctx.fillStyle = c.wash
     ctx.font = `400 28px ${TEXT}`
-    ctx.fillText(STATUSES[k].label, x, pad + 642)
+    ctx.fillText(t(STATUSES[k].label), x, pad + 642)
   })
 
   // Итоги
   ctx.fillStyle = c.ink
   ctx.font = `400 40px ${TEXT}`
-  const line1 = `${data.stats.total_episodes} episodes, about ${data.hours} hours on the road.`
+  const line1 = t('{episodes}, about {hours} on the road.', {
+    episodes: `${data.stats.total_episodes} ${pluralWord(data.stats.total_episodes, 'episode')}`,
+    hours: plural(data.hours, 'hour'),
+  })
   ctx.fillText(fitText(ctx, line1, CARD_W - pad * 2), pad, pad + 760)
-  if (data.stats.avg_score) ctx.fillText(`Average score ${data.stats.avg_score}.`, pad, pad + 814)
+  if (data.stats.avg_score) ctx.fillText(t('Average score {n}.', { n: data.stats.avg_score }), pad, pad + 814)
 
   // Любимое
   if (data.favourites.length) {
     ctx.fillStyle = c.wash
     ctx.font = `400 28px ${TEXT}`
-    ctx.fillText('Highest rated', pad, pad + 912)
+    ctx.fillText(t('Highest rated'), pad, pad + 912)
     ctx.fillStyle = c.ink
     ctx.font = `600 36px ${TEXT}`
     data.favourites.slice(0, 3).forEach((f, i) => {

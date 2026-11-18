@@ -38,8 +38,9 @@
 }
 
 :root {
-  --font-text: 'Shippori Mincho B1', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
-  --font-brush: 'Yuji Boku', 'Shippori Mincho B1', serif;
+  /* Spectral — только для кириллицы: в Shippori Mincho её нет */
+  --font-text: 'Shippori Mincho B1', 'Spectral', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+  --font-brush: 'Yuji Boku', 'Shippori Mincho B1', 'Spectral', serif;
 
   /* Модульная шкала 1.25 */
   --step--1: 0.8125rem;  /* 13 */
@@ -1933,4 +1934,28 @@ kbd {
   .share-card__canvas {
     max-width: 16rem;
   }
+}
+
+/* ── Переключатель языка ────────────────────────────────────── */
+.lang-switch {
+  display: inline-flex;
+  gap: 0.15rem;
+}
+
+.lang-switch button {
+  min-width: 2.1rem;
+  min-height: 1.9rem;
+  padding: 0 0.35rem;
+  border-radius: 2px;
+  font-size: 0.75rem;
+  color: var(--wash);
+}
+
+.lang-switch button:hover {
+  color: var(--ink);
+}
+
+.lang-switch button[aria-pressed='true'] {
+  color: var(--ink);
+  box-shadow: inset 0 -2px 0 var(--ink);
 }

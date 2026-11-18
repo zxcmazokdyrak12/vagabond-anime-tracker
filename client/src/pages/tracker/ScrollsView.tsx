@@ -5,10 +5,12 @@ import Enso from '../../components/Enso'
 import { STATUSES, STATUS_KEYS, plural } from '../../lib/status'
 import type { ListEntry, ListPatch, Status } from '../../types'
 import { SORTS, sortEntries, type SortKey } from '../../lib/sort'
+import { useT } from '../../lib/i18n'
 
 type OnUpdate = (animeId: number, patch: ListPatch) => void
 
 function Progress({ entry, onStep }: { entry: ListEntry; onStep: (delta: number) => void }) {
+  const t = useT()
   const watched = entry.watched_episodes || 0
   const total = entry.episodes
   const pct = total ? Math.min(100, (watched / total) * 100) : 0
@@ -21,14 +23,16 @@ function Progress({ entry, onStep }: { entry: ListEntry; onStep: (delta: number)
         </span>
       ) : null}
       <span className="progress__text">
-        {total ? `${watched} of ${plural(total, 'episode')}` : `${plural(watched, 'episode')} watched`}
+        {total
+          ? t('{watched} of {total}', { watched, total: plural(total, 'episode') })
+          : t('{episodes} watched', { episodes: plural(watched, 'episode') })}
       </span>
       <span className="step-btns">
         <button
           type="button"
           onClick={() => onStep(-1)}
           disabled={watched <= 0}
-          aria-label={`One episode fewer for ${entry.title}`}
+          aria-label={t('One episode fewer for {title}', { title: entry.title })}
         >
           −
         </button>
@@ -36,7 +40,7 @@ function Progress({ entry, onStep }: { entry: ListEntry; onStep: (delta: number)
           type="button"
           onClick={() => onStep(1)}
           disabled={total != null && total > 0 && watched >= total}
-          aria-label={`Mark next episode of ${entry.title} as watched`}
+          aria-label={t('Mark next episode of {title} as watched', { title: entry.title })}
         >
           +
         </button>
@@ -47,6 +51,7 @@ function Progress({ entry, onStep }: { entry: ListEntry; onStep: (delta: number)
 
 /** Даты, пересмотры и заметка — раскрываются под строкой */
 function Details({ entry, onUpdate }: { entry: ListEntry; onUpdate: OnUpdate }) {
+  const t = useT()
   const [notes, setNotes] = useState(entry.notes ?? '')
   const [saved, setSaved] = useState(false)
   const rewatches = entry.rewatch_count ?? 0
@@ -62,7 +67,7 @@ function Details({ entry, onUpdate }: { entry: ListEntry; onUpdate: OnUpdate }) 
   return (
     <div className="scroll-details" id={id}>
       <label className="field">
-        Started
+        {t('Started')}
         <input
           type="date"
           className="input-date"
@@ -71,7 +76,7 @@ function Details({ entry, onUpdate }: { entry: ListEntry; onUpdate: OnUpdate }) 
         />
       </label>
       <label className="field">
-        Finished
+        {t('Finished')}
         <input
           type="date"
           className="input-date"
@@ -81,13 +86,13 @@ function Details({ entry, onUpdate }: { entry: ListEntry; onUpdate: OnUpdate }) 
         />
       </label>
       <div className="field">
-        <span id={`${id}-rw`}>Rewatched</span>
+        <span id={`${id}-rw`}>{t('Rewatched')}</span>
         <span className="step-btns" role="group" aria-labelledby={`${id}-rw`}>
           <button
             type="button"
             onClick={() => onUpdate(entry.anime_id, { rewatch_count: rewatches - 1 })}
             disabled={rewatches <= 0}
-            aria-label="One rewatch fewer"
+            aria-label={t('One rewatch fewer')}
           >
             −
           </button>
@@ -95,7 +100,7 @@ function Details({ entry, onUpdate }: { entry: ListEntry; onUpdate: OnUpdate }) 
           <button
             type="button"
             onClick={() => onUpdate(entry.anime_id, { rewatch_count: rewatches + 1 })}
-            aria-label="Add a rewatch"
+            aria-label={t('Add a rewatch')}
           >
             +
           </button>
@@ -103,13 +108,13 @@ function Details({ entry, onUpdate }: { entry: ListEntry; onUpdate: OnUpdate }) 
       </div>
       <label className="field scroll-details__notes">
         <span>
-          Notes {saved && <span className="saved-mark">saved</span>}
+          {t('Notes')} {saved && <span className="saved-mark">{t('saved')}</span>}
         </span>
         <textarea
           className="input-notes"
           rows={3}
           maxLength={2000}
-          placeholder="What stayed with you, where you stopped, who recommended it…"
+          placeholder={t('What stayed with you, where you stopped, who recommended it…')}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           onBlur={saveNotes}
@@ -127,6 +132,7 @@ interface RowProps {
 }
 
 function ScrollRow({ entry, onUpdate, onDelete, onMove }: RowProps) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const step = (d: number) =>
     onUpdate(entry.anime_id, { watched_episodes: Math.max(0, (entry.watched_episodes || 0) + d) })
@@ -163,14 +169,14 @@ function ScrollRow({ entry, onUpdate, onDelete, onMove }: RowProps) {
           aria-controls={`details-${entry.anime_id}`}
           onClick={() => setOpen((o) => !o)}
         >
-          {open ? 'Hide details' : entry.notes ? 'Details and notes' : 'Details'}
-          {(entry.rewatch_count ?? 0) > 0 && `, rewatched ${entry.rewatch_count}×`}
+          {open ? t('Hide details') : entry.notes ? t('Details and notes') : t('Details')}
+          {(entry.rewatch_count ?? 0) > 0 && t(', rewatched {n}×', { n: entry.rewatch_count ?? 0 })}
         </button>
       </div>
 
       <div className="scroll-row__controls">
         <label className="field">
-          Status
+          {t('Status')}
           <select
             className={`select status--${entry.status}`}
             value={entry.status}
@@ -178,20 +184,20 @@ function ScrollRow({ entry, onUpdate, onDelete, onMove }: RowProps) {
           >
             {STATUS_KEYS.map((k) => (
               <option key={k} value={k}>
-                {STATUSES[k].glyph} {STATUSES[k].label}
+                {STATUSES[k].glyph} {t(STATUSES[k].label)}
               </option>
             ))}
           </select>
         </label>
 
         <label className="field">
-          Score
+          {t('Score')}
           <select
             className="select"
             value={entry.score || ''}
             onChange={(e) => onUpdate(entry.anime_id, { score: e.target.value ? Number(e.target.value) : null })}
           >
-            <option value="">None</option>
+            <option value="">{t('None')}</option>
             {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((n) => (
               <option key={n} value={n}>
                 {n}
@@ -204,8 +210,8 @@ function ScrollRow({ entry, onUpdate, onDelete, onMove }: RowProps) {
           type="button"
           className="remove-btn"
           onClick={() => onDelete(entry)}
-          aria-label={`Remove ${entry.title} from scrolls`}
-          title="Remove from scrolls"
+          aria-label={t('Remove {title} from scrolls', { title: entry.title })}
+          title={t('Remove from scrolls')}
         >
           ✕
         </button>
@@ -226,6 +232,7 @@ interface Props {
 }
 
 export default function ScrollsView({ list, loaded, onUpdate, onDelete, importSlot }: Props) {
+  const t = useT()
   const [filter, setFilter] = useState<Status | 'all'>('all')
   const [sort, setSort] = useState<SortKey>('added')
   const listRef = useRef<HTMLUListElement>(null)
@@ -242,14 +249,13 @@ export default function ScrollsView({ list, loaded, onUpdate, onDelete, importSl
       <div className="empty">
         <span className="brush" aria-hidden="true">空</span>
         <div>
-          <h1 className="page-title">Your scrolls are empty</h1>
+          <h1 className="page-title">{t('Your scrolls are empty')}</h1>
           <p className="lede" style={{ marginBottom: '1.5rem' }}>
-            Every title you add lands here, where you can track episodes, set a status and give it a score. Coming
-            from MyAnimeList or Shikimori? Bring your whole list over in one go.
+            {t('Every title you add lands here, where you can track episodes, set a status and give it a score. Coming from MyAnimeList or Shikimori? Bring your whole list over in one go.')}
           </p>
           <div className="gate-hero__actions">
             <Link to="/?tab=gate" className="btn">
-              Browse top anime
+              {t('Browse top anime')}
             </Link>
             {importSlot}
           </div>
@@ -271,11 +277,11 @@ export default function ScrollsView({ list, loaded, onUpdate, onDelete, importSl
 
   return (
     <>
-      <h1 className="visually-hidden">My scrolls</h1>
+      <h1 className="visually-hidden">{t('My scrolls')}</h1>
       <div className="scrolls-toolbar">
-        <div className="filters" role="group" aria-label="Filter by status">
+        <div className="filters" role="group" aria-label={t('Filter by status')}>
           <button type="button" className="filter" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>
-            All <span className="filter__count">{list.length}</span>
+            {t('All')} <span className="filter__count">{list.length}</span>
           </button>
           {STATUS_KEYS.map((k) => (
             <button
@@ -288,18 +294,18 @@ export default function ScrollsView({ list, loaded, onUpdate, onDelete, importSl
               <span className={`brush ${filter === k ? '' : `status--${k}`}`} aria-hidden="true">
                 {STATUSES[k].glyph}
               </span>
-              {STATUSES[k].label}
+              {t(STATUSES[k].label)}
               <span className="filter__count">{counts[k]}</span>
             </button>
           ))}
         </div>
         <div className="scrolls-toolbar__right">
           <label className="field field--inline">
-            Sort by
+            {t('Sort by')}
             <select className="select" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
               {SORTS.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.label}
+                  {t(s.label)}
                 </option>
               ))}
             </select>
@@ -309,7 +315,9 @@ export default function ScrollsView({ list, loaded, onUpdate, onDelete, importSl
       </div>
 
       {shown.length === 0 ? (
-        <p className="muted">Nothing marked {filter === 'all' ? '' : STATUSES[filter].label.toLowerCase()} yet.</p>
+        <p className="muted">
+          {t('Nothing marked {status} yet.', { status: filter === 'all' ? '' : t(STATUSES[filter].label).toLowerCase() })}
+        </p>
       ) : (
         <ul className="scroll-list" ref={listRef}>
           {shown.map((entry) => (

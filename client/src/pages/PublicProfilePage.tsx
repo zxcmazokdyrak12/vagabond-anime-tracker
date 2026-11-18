@@ -8,10 +8,12 @@ import Notice from '../components/Notice'
 import PathView from './tracker/PathView'
 import { STATUSES, STATUS_KEYS, plural } from '../lib/status'
 import type { PublicProfile } from '../types'
+import { locale, useT } from '../lib/i18n'
 
 /** Чужой «путь» по ссылке /u/:username — только чтение, вход не нужен */
 export default function PublicProfilePage({ signedIn }: { signedIn: boolean }) {
   const { username = '' } = useParams()
+  const t = useT()
   const [state, setState] = useState<{ key: string; profile: PublicProfile | null; error: 'missing' | 'down' | null }>({
     key: '',
     profile: null,
@@ -35,7 +37,7 @@ export default function PublicProfilePage({ signedIn }: { signedIn: boolean }) {
     <>
       <header className="masthead">
         <div className="masthead__row">
-          <Link to="/" className="wordmark" aria-label="Vagabond Tracker, home">
+          <Link to="/" className="wordmark" aria-label={t('Vagabond Tracker, home')}>
             <span className="wordmark__seal" aria-hidden="true">武</span>
             <span className="wordmark__name">
               Vagabond
@@ -43,7 +45,7 @@ export default function PublicProfilePage({ signedIn }: { signedIn: boolean }) {
             </span>
           </Link>
           <Link to="/" className="btn btn--ghost btn--small">
-            {signedIn ? 'Back to my scrolls' : 'Start your own path'}
+            {signedIn ? t('Back to my scrolls') : t('Start your own path')}
           </Link>
         </div>
         <BrushStroke />
@@ -55,18 +57,19 @@ export default function PublicProfilePage({ signedIn }: { signedIn: boolean }) {
         ) : error ? (
           <Notice
             tone={error === 'down' ? 'error' : 'neutral'}
-            title={error === 'missing' ? 'This path is private or does not exist' : 'The profile did not load'}
+            title={error === 'missing' ? t('This path is private or does not exist') : t('The profile did not load')}
           >
             {error === 'missing'
-              ? 'Its owner may have closed it, or the link has a typo.'
-              : 'The server is not answering. Try again in a minute.'}
+              ? t('Its owner may have closed it, or the link has a typo.')
+              : t('The server is not answering. Try again in a minute.')}
           </Notice>
         ) : profile ? (
           <>
             <h1 className="page-title">{profile.username}</h1>
             <p className="lede">
-              On the road since{' '}
-              {new Date(profile.member_since).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}.
+              {t('On the road since {date}.', {
+                date: new Date(profile.member_since).toLocaleDateString(locale(), { month: 'long', year: 'numeric' }),
+              })}
             </p>
 
             <div className="section">
@@ -82,7 +85,7 @@ export default function PublicProfilePage({ signedIn }: { signedIn: boolean }) {
                     <span className={`brush status--${status}`} aria-hidden="true">
                       {STATUSES[status].glyph}
                     </span>
-                    {STATUSES[status].label}
+                    {t(STATUSES[status].label)}
                     <span className="section-head__aside">{plural(items.length, 'title')}</span>
                   </h2>
                   <ul className="poster-grid">
@@ -93,7 +96,10 @@ export default function PublicProfilePage({ signedIn }: { signedIn: boolean }) {
                           <span className="poster__title">{e.title}</span>
                         </Link>
                         <span className="poster__meta">
-                          {[e.score ? `Scored ${e.score}` : null, e.episodes ? `${e.watched_episodes}/${e.episodes} ep.` : null]
+                          {[
+                            e.score ? t('Scored {n}', { n: e.score }) : null,
+                            e.episodes ? t('{watched}/{total} ep.', { watched: e.watched_episodes, total: e.episodes }) : null,
+                          ]
                             .filter(Boolean)
                             .join(', ') || ' '}
                         </span>

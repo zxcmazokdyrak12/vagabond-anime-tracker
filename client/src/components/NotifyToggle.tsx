@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { errorStatus, testPush } from '../api'
 import { currentSubscription, disablePush, enablePush, needsHomeScreen, pushSupported } from '../lib/push'
+import { useT } from '../lib/i18n'
 
 type State = 'checking' | 'off' | 'on' | 'busy' | 'denied' | 'unsupported' | 'homescreen' | 'unavailable'
 
 /** «Сообщать о новых сериях» — пуш, когда выходит серия того, что ты смотришь */
 export default function NotifyToggle() {
+  const t = useT()
   const [state, setState] = useState<State>(() =>
     !pushSupported() ? (needsHomeScreen() ? 'homescreen' : 'unsupported') : 'checking'
   )
@@ -31,7 +33,7 @@ export default function NotifyToggle() {
     } catch (err) {
       console.error('Push subscribe failed:', err)
       setState(errorStatus(err) === 404 ? 'unavailable' : 'off')
-      if (errorStatus(err) !== 404) setNote('Could not turn notifications on. Try again.')
+      if (errorStatus(err) !== 404) setNote(t('Could not turn notifications on. Try again.'))
     }
   }
 
@@ -44,9 +46,13 @@ export default function NotifyToggle() {
   const sendTest = async () => {
     try {
       const { data } = await testPush()
-      setNote(data.delivered ? 'Test sent. It should appear in a few seconds.' : 'No device received it. Turn notifications off and on.')
+      setNote(
+        data.delivered
+          ? t('Test sent. It should appear in a few seconds.')
+          : t('No device received it. Turn notifications off and on.')
+      )
     } catch {
-      setNote('The test could not be sent.')
+      setNote(t('The test could not be sent.'))
     }
   }
 
@@ -62,11 +68,11 @@ export default function NotifyToggle() {
   }
 
   return (
-    <div className="notify" role="group" aria-label="Episode notifications">
+    <div className="notify" role="group" aria-label={t('Episode notifications')}>
       <span className="brush notify__glyph" aria-hidden="true">報</span>
       <div className="notify__body">
-        <p className="notify__title">{state === 'on' ? 'Episode notifications are on' : 'New episode notifications'}</p>
-        <p className="notify__text">{text[state]}</p>
+        <p className="notify__title">{state === 'on' ? t('Episode notifications are on') : t('New episode notifications')}</p>
+        <p className="notify__text">{text[state] && t(text[state])}</p>
         {note && (
           <p className="notify__text" role="status">
             {note}
@@ -76,16 +82,16 @@ export default function NotifyToggle() {
       <div className="notify__actions">
         {(state === 'off' || (state === 'busy' && !note)) && (
           <button type="button" className="btn btn--small" onClick={turnOn} disabled={state === 'busy'}>
-            {state === 'busy' ? 'Turning on…' : 'Turn on'}
+            {state === 'busy' ? t('Turning on…') : t('Turn on')}
           </button>
         )}
         {state === 'on' && (
           <>
             <button type="button" className="text-btn" onClick={sendTest}>
-              Send a test
+              {t('Send a test')}
             </button>
             <button type="button" className="btn btn--ghost btn--small" onClick={turnOff}>
-              Turn off
+              {t('Turn off')}
             </button>
           </>
         )}

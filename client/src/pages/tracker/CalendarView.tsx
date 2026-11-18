@@ -5,6 +5,7 @@ import Enso from '../../components/Enso'
 import Notice from '../../components/Notice'
 import NotifyToggle from '../../components/NotifyToggle'
 import { dayKey, groupByDay } from '../../lib/calendar'
+import { locale, t, useT } from '../../lib/i18n'
 import type { CalendarEpisode } from '../../types'
 
 export interface CalendarState {
@@ -16,10 +17,13 @@ function dayLabel(date: Date, now = new Date()) {
   const today = dayKey(now)
   const tomorrow = dayKey(new Date(now.getTime() + 86_400_000))
   const key = dayKey(date)
-  const weekday = date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
-  if (key === today) return { title: 'Today', sub: weekday }
-  if (key === tomorrow) return { title: 'Tomorrow', sub: weekday }
-  return { title: date.toLocaleDateString('en-GB', { weekday: 'long' }), sub: date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) }
+  const weekday = date.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })
+  if (key === today) return { title: t('Today'), sub: weekday }
+  if (key === tomorrow) return { title: t('Tomorrow'), sub: weekday }
+  return {
+    title: date.toLocaleDateString(locale(), { weekday: 'long' }),
+    sub: date.toLocaleDateString(locale(), { day: 'numeric', month: 'long' }),
+  }
 }
 
 /** Иероглиф дня недели: 日月火水木金土 */
@@ -28,15 +32,16 @@ const DAY_KANJI = ['日', '月', '火', '水', '木', '金', '土']
 export default function CalendarView({ calendar, onRetry }: { calendar: CalendarState; onRetry: () => void }) {
   // «Сейчас» фиксируем при монтировании: какие серии уже вышли
   const [now] = useState(() => Date.now())
+  useT() // перерисовка при смене языка
 
   if (calendar.status === 'error') {
     return (
       <Notice
         tone="error"
-        title="The schedule didn’t load"
-        action={<button type="button" className="btn btn--ghost" onClick={onRetry}>Try again</button>}
+        title={t('The schedule didn’t load')}
+        action={<button type="button" className="btn btn--ghost" onClick={onRetry}>{t('Try again')}</button>}
       >
-        The anime catalogue isn’t responding. It usually recovers within a minute.
+        {t('The anime catalogue isn’t responding. It usually recovers within a minute.')}
       </Notice>
     )
   }
@@ -49,13 +54,12 @@ export default function CalendarView({ calendar, onRetry }: { calendar: Calendar
       <div className="empty">
         <span className="brush" aria-hidden="true">暦</span>
         <div>
-          <h1 className="page-title">Nothing airs this week</h1>
+          <h1 className="page-title">{t('Nothing airs this week')}</h1>
           <p className="lede" style={{ marginBottom: '1.5rem' }}>
-            New episodes of ongoing anime you’re watching or planning show up here, day by day. Add something from
-            this season to fill the week.
+            {t('New episodes of ongoing anime you’re watching or planning show up here, day by day. Add something from this season to fill the week.')}
           </p>
           <Link to="/?tab=gate" className="btn">
-            See this season
+            {t('See this season')}
           </Link>
         </div>
       </div>
@@ -65,7 +69,7 @@ export default function CalendarView({ calendar, onRetry }: { calendar: Calendar
 
   return (
     <>
-      <h1 className="visually-hidden">This week</h1>
+      <h1 className="visually-hidden">{t('This week')}</h1>
       <NotifyToggle />
       <ol className="calendar">
         {groupByDay(calendar.episodes).map(([key, eps]) => {
@@ -90,7 +94,7 @@ export default function CalendarView({ calendar, onRetry }: { calendar: Calendar
                   return (
                     <li key={`${ep.anime_id}-${ep.episode}`} className={`calendar__ep ${aired ? 'is-aired' : ''}`}>
                       <time dateTime={ep.airing_at} className="calendar__time">
-                        {at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                        {at.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}
                       </time>
                       <Link to={`/anime/${ep.anime_id}`} tabIndex={-1} aria-hidden="true">
                         <InkImage src={ep.image} />
@@ -100,11 +104,12 @@ export default function CalendarView({ calendar, onRetry }: { calendar: Calendar
                           {ep.title_english || ep.title}
                         </Link>
                         <p className="calendar__meta">
-                          Episode {ep.episode}
-                          {ep.episodes ? ` of ${ep.episodes}` : ''}
-                          {aired ? ', out now' : ''}
-                          {ep.status === 'watching' && behind > 0 ? `. You’re ${behind} behind` : ''}
-                          {ep.status === 'planning' && ', in your plans'}
+                          {ep.episodes
+                            ? t('Episode {n} of {total}', { n: ep.episode, total: ep.episodes })
+                            : t('Episode {n}', { n: ep.episode })}
+                          {aired ? t(', out now') : ''}
+                          {ep.status === 'watching' && behind > 0 ? t('. You’re {n} behind', { n: behind }) : ''}
+                          {ep.status === 'planning' && t(', in your plans')}
                         </p>
                       </div>
                     </li>

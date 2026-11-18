@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useT } from '../lib/i18n'
 
 const GROUPS: { title: string; keys: [string, string][] }[] = [
   {
@@ -21,6 +22,7 @@ const GROUPS: { title: string; keys: [string, string][] }[] = [
 ]
 
 export default function ShortcutsDialog({ onClose }: { onClose: () => void }) {
+  const t = useT()
   const closeRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -42,15 +44,15 @@ export default function ShortcutsDialog({ onClose }: { onClose: () => void }) {
         <div className="dialog__head">
           <h2 id="shortcuts-title" className="section-head" style={{ marginBottom: 0 }}>
             <span className="brush" aria-hidden="true">鍵</span>
-            Keyboard shortcuts
+            {t('Keyboard shortcuts')}
           </h2>
-          <button ref={closeRef} type="button" className="icon-btn" onClick={onClose} aria-label="Close">
+          <button ref={closeRef} type="button" className="icon-btn" onClick={onClose} aria-label={t('Close')}>
             ✕
           </button>
         </div>
         {GROUPS.map((g) => (
           <section key={g.title}>
-            <h3 className="sub-head">{g.title}</h3>
+            <h3 className="sub-head">{t(g.title)}</h3>
             <dl className="info-list shortcuts">
               {g.keys.map(([k, what]) => (
                 <div key={k}>
@@ -59,7 +61,7 @@ export default function ShortcutsDialog({ onClose }: { onClose: () => void }) {
                       <kbd key={part}>{part}</kbd>
                     ))}
                   </dt>
-                  <dd>{what}</dd>
+                  <dd>{t(what)}</dd>
                 </div>
               ))}
             </dl>

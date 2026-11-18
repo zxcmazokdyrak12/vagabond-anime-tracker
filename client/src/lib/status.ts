@@ -14,5 +14,5 @@ export const STATUS_KEYS = Object.keys(STATUSES) as Status[]
 export const posterOf = (anime: Pick<Anime, 'images'> | undefined, large = false): string | undefined =>
   (large ? anime?.images?.jpg?.large_image_url : null) || anime?.images?.jpg?.image_url || undefined
 
-/** «1 episode», «12 episodes» */
-export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
+/** «1 episode», «12 episodes» — с учётом языка (см. i18n) */
+export { plural } from './i18n'

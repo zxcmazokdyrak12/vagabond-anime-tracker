@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { updateMe } from '../api'
 import type { User } from '../types'
+import { useT } from '../lib/i18n'
 
 /** Переключатель «показывать мой путь всем» и ссылка на публичную страницу */
 export default function ShareProfile({ user, onUserChange }: { user: User; onUserChange: (u: User) => void }) {
+  const t = useT()
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
   const url = `${window.location.origin}/u/${encodeURIComponent(user.username)}`
@@ -34,11 +36,11 @@ export default function ShareProfile({ user, onUserChange }: { user: User; onUse
     <section className="section share" aria-labelledby="share-head">
       <h2 className="section-head" id="share-head">
         <span className="brush" aria-hidden="true">公</span>
-        Share your path
+        {t('Share your path')}
       </h2>
       <label className="check">
         <input type="checkbox" checked={Boolean(user.is_public)} disabled={busy} onChange={toggle} />
-        Anyone with the link can see my scrolls and stats (notes stay private)
+        {t('Anyone with the link can see my scrolls and stats (notes stay private)')}
       </label>
       {user.is_public && (
         <div className="share__link">
@@ -46,7 +48,7 @@ export default function ShareProfile({ user, onUserChange }: { user: User; onUse
             {url.replace(/^https?:\/\//, '')}
           </a>
           <button type="button" className="btn btn--ghost btn--small" onClick={copy}>
-            {copied ? 'Copied' : 'Copy link'}
+            {copied ? t('Copied') : t('Copy link')}
           </button>
         </div>
       )}

@@ -3,6 +3,7 @@ import axios from 'axios'
 import { importList } from '../api'
 import { plural } from '../lib/status'
 import type { ImportResult } from '../types'
+import { useT } from '../lib/i18n'
 
 /** Выгрузка MAL приходит как .xml.gz — распаковываем прямо в браузере */
 async function readExport(file: File): Promise<string> {
@@ -14,11 +15,12 @@ async function readExport(file: File): Promise<string> {
 }
 
 export function ImportButton({ onImported }: { onImported: () => void }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   return (
     <>
       <button type="button" className="btn btn--ghost btn--small" onClick={() => setOpen(true)}>
-        Import from MyAnimeList or Shikimori
+        {t('Import from MyAnimeList or Shikimori')}
       </button>
       {open && <ImportDialog onClose={() => setOpen(false)} onImported={onImported} />}
     </>
@@ -26,6 +28,7 @@ export function ImportButton({ onImported }: { onImported: () => void }) {
 }
 
 export default function ImportDialog({ onClose, onImported }: { onClose: () => void; onImported: () => void }) {
+  const t = useT()
   const [overwrite, setOverwrite] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -50,9 +53,9 @@ export default function ImportDialog({ onClose, onImported }: { onClose: () => v
       setResult(res.data)
       onImported()
     } catch (err) {
+      const reason = axios.isAxiosError(err) ? (err.response?.data as { error?: string })?.error : undefined
       setError(
-        (axios.isAxiosError(err) && (err.response?.data as { error?: string })?.error) ||
-          'The file could not be imported. Check that it is a MyAnimeList or Shikimori export.'
+        reason ? t(reason) : t('The file could not be imported. Check that it is a MyAnimeList or Shikimori export.')
       )
     } finally {
       setBusy(false)
@@ -71,30 +74,30 @@ export default function ImportDialog({ onClose, onImported }: { onClose: () => v
         <div className="dialog__head">
           <h2 id="import-title" className="section-head" style={{ marginBottom: 0 }}>
             <span className="brush" aria-hidden="true">移</span>
-            Import your list
+            {t('Import your list')}
           </h2>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">
+          <button type="button" className="icon-btn" onClick={onClose} aria-label={t('Close')}>
             ✕
           </button>
         </div>
 
         <ol className="import-steps">
           <li>
-            <strong>MyAnimeList:</strong> open{' '}
+            <strong>MyAnimeList:</strong> {t('open')}{' '}
             <a href="https://myanimelist.net/panel.php?go=export" target="_blank" rel="noreferrer">
               Export lists
             </a>
-            , choose Anime and download the file (.xml.gz is fine).
+            {t(', choose Anime and download the file (.xml.gz is fine).')}
           </li>
           <li>
-            <strong>Shikimori:</strong> in your profile settings, open Account, then export your anime list as XML or
-            JSON.
+            <strong>{t('Shikimori')}:</strong>{' '}
+            {t('in your profile settings, open Account, then export your anime list as XML or JSON.')}
           </li>
         </ol>
 
         <label className="check">
           <input type="checkbox" checked={overwrite} onChange={(e) => setOverwrite(e.target.checked)} />
-          Replace progress for titles already in my scrolls
+          {t('Replace progress for titles already in my scrolls')}
         </label>
 
         <input
@@ -103,10 +106,10 @@ export default function ImportDialog({ onClose, onImported }: { onClose: () => v
           accept=".xml,.gz,.json,application/xml,text/xml,application/json,application/gzip"
           className="visually-hidden"
           onChange={onFile}
-          aria-label="Export file"
+          aria-label={t('Export file')}
         />
         <button type="button" className="btn" disabled={busy} onClick={() => fileRef.current?.click()}>
-          {busy ? 'Importing…' : 'Choose the export file'}
+          {busy ? t('Importing…') : t('Choose the export file')}
         </button>
 
         {error && (
@@ -116,9 +119,9 @@ export default function ImportDialog({ onClose, onImported }: { onClose: () => v
         )}
         {result && (
           <p className="import-result" role="status">
-            Added {plural(result.added, 'title')}
-            {result.updated > 0 && `, updated ${result.updated}`}
-            {result.skipped > 0 && `, kept ${result.skipped} you already had`}.
+            {t('Added {titles}', { titles: plural(result.added, 'title') })}
+            {result.updated > 0 && t(', updated {n}', { n: result.updated })}
+            {result.skipped > 0 && t(', kept {n} you already had', { n: result.skipped })}.
           </p>
         )}
       </div>
