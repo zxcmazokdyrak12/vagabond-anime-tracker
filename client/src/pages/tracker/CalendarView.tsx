@@ -7,6 +7,7 @@ import NotifyToggle from '../../components/NotifyToggle'
 import { dayKey, groupByDay } from '../../lib/calendar'
 import { locale, t, useT } from '../../lib/i18n'
 import type { CalendarEpisode } from '../../types'
+import InkArt from '../../components/InkArt'
 
 export interface CalendarState {
   status: 'idle' | 'done' | 'error'
@@ -51,8 +52,8 @@ export default function CalendarView({ calendar, onRetry }: { calendar: Calendar
     return (
       <>
       <NotifyToggle />
-      <div className="empty">
-        <span className="brush" aria-hidden="true">暦</span>
+      <div className="empty empty--art">
+        <InkArt name="otsu" className="empty__art" />
         <div>
           <h1 className="page-title">{t('Nothing airs this week')}</h1>
           <p className="lede" style={{ marginBottom: '1.5rem' }}>

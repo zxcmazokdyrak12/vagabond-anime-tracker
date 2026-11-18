@@ -4,6 +4,13 @@ import CalendarView from './CalendarView'
 import { groupByDay } from '../../lib/calendar'
 import type { CalendarEpisode } from '../../types'
 
+// Через час, но не позже конца сегодняшнего дня: иначе после 23:00 эпизод уезжает на «завтра»
+function laterToday() {
+  const end = new Date()
+  end.setHours(23, 59, 0, 0)
+  return new Date(Math.min(Date.now() + 3_600_000, Math.max(Date.now() + 1000, end.getTime()))).toISOString()
+}
+
 const ep = (over: Partial<CalendarEpisode>): CalendarEpisode => ({
   anime_id: 52991,
   title: 'Sousou no Frieren',
@@ -11,7 +18,7 @@ const ep = (over: Partial<CalendarEpisode>): CalendarEpisode => ({
   image: null,
   episode: 8,
   episodes: 28,
-  airing_at: new Date(Date.now() + 3_600_000).toISOString(),
+  airing_at: laterToday(),
   status: 'watching',
   watched_episodes: 5,
   ...over,

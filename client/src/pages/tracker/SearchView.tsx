@@ -3,6 +3,7 @@ import Enso from '../../components/Enso'
 import Notice from '../../components/Notice'
 import type { Anime } from '../../types'
 import { plural, useT } from '../../lib/i18n'
+import InkArt from '../../components/InkArt'
 
 export interface SearchState {
   key: string | null
@@ -37,6 +38,7 @@ export default function SearchView({ query, search, loading, onRetry, inListIds,
     return (
       <Notice
         tone="error"
+        art="blind-sword"
         title={t('Search didn’t go through')}
         action={<button type="button" className="btn btn--ghost" onClick={onRetry}>{t('Search again')}</button>}
       >
@@ -57,9 +59,12 @@ export default function SearchView({ query, search, loading, onRetry, inListIds,
       </h1>
 
       {search.results.length === 0 ? (
-        <p className="muted">
-          {t('Nothing matches “{q}”. Check the spelling or try the Japanese title in romaji, like “Shingeki no Kyojin”.', { q: query })}
-        </p>
+        <div className="empty empty--art empty--small">
+          <InkArt name="blind-sword" className="empty__art" />
+          <p className="muted">
+            {t('Nothing matches “{q}”. Check the spelling or try the Japanese title in romaji, like “Shingeki no Kyojin”.', { q: query })}
+          </p>
+        </div>
       ) : (
         <ul className="poster-grid">
           {search.results.map((anime) => (

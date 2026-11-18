@@ -57,6 +57,7 @@ export default function PublicProfilePage({ signedIn }: { signedIn: boolean }) {
         ) : error ? (
           <Notice
             tone={error === 'down' ? 'error' : 'neutral'}
+            art={error === 'missing' ? 'blind-sword' : 'musashi-gaze'}
             title={error === 'missing' ? t('This path is private or does not exist') : t('The profile did not load')}
           >
             {error === 'missing'

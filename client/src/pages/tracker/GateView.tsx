@@ -153,6 +153,7 @@ export default function GateView({
     return (
       <Notice
         tone="error"
+        art="musashi-gaze"
         title={t('The catalogue didn’t load')}
         action={<button type="button" className="btn btn--ghost" onClick={onRetry}>{t('Try again')}</button>}
       >
