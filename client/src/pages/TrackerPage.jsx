@@ -417,7 +417,7 @@ useEffect(() => {
       setSearching(false)
     } catch (err) {
       const status = err.response?.status
-      if ((status === 504 || status === 502 || status === 503) && attempt < 3) {
+      if ([429, 502, 503, 504].includes(status) && attempt < 3) {
         setTimeout(() => handleSearch(attempt + 1), 1200 * attempt)
         return
       }
@@ -454,13 +454,28 @@ useEffect(() => {
   }
 
   const handleUpdate = async (animeId, data) => {
-    // Оптимистичное обновление интерфейса
+    // Досмотрел последнюю серию — сразу помечаем как «完 completed»
+    const current = list.find((item) => item.anime_id === animeId)
+    if (
+      current?.episodes &&
+      data.watched_episodes >= current.episodes &&
+      current.status !== 'completed'
+    ) {
+      data = { ...data, status: 'completed' }
+    }
+    if ('score' in data) data = { ...data, score: data.score ? Number(data.score) : null }
+
+    // Оптимистичное обновление интерфейса.
+    // Сравниваем по anime_id (MAL id) — раньше сравнивалось с item.id
+    // (id строки в БД), поэтому +1 / статус / оценка не обновлялись до перезагрузки.
     setList((prev) =>
-      prev.map((item) => (item.id === animeId ? { ...item, ...data } : item))
+      prev.map((item) => (item.anime_id === animeId ? { ...item, ...data } : item))
     )
 
     try {
-      await updateAnime(animeId, data)
+      const res = await updateAnime(animeId, data)
+      // Синхронизируемся с тем, что реально сохранил сервер
+      setList((prev) => prev.map((item) => (item.anime_id === animeId ? res.data : item)))
       await loadStats()
     } catch (err) {
       console.error('Failed to update:', err)
