@@ -11,12 +11,20 @@ import ScrollsView from './tracker/ScrollsView'
 import PathView from './tracker/PathView'
 import SearchView, { type SearchState } from './tracker/SearchView'
 import { posterOf } from '../lib/status'
+import { ImportButton } from '../components/ImportDialog'
+import ShareProfile from '../components/ShareProfile'
 import type { Anime, ListEntry, ListPatch, Stats, User } from '../types'
 
 const TAB_IDS: TabId[] = ['gate', 'scrolls', 'path', 'search']
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-export default function TrackerPage({ user, onLogout }: { user: User; onLogout: () => void }) {
+interface Props {
+  user: User
+  onLogout: () => void
+  onUserChange: (user: User) => void
+}
+
+export default function TrackerPage({ user, onLogout, onUserChange }: Props) {
   // Вкладка и запрос живут в URL — «Назад» со страницы тайтла возвращает туда же
   const [params] = useSearchParams()
   const tabParam = params.get('tab') as TabId | null
@@ -205,9 +213,17 @@ export default function TrackerPage({ user, onLogout }: { user: User; onLogout: 
               />
             )}
             {tab === 'scrolls' && (
-              <ScrollsView list={list} loaded={listLoaded} onUpdate={handleUpdate} onDelete={handleDelete} />
+              <ScrollsView
+                list={list}
+                loaded={listLoaded}
+                onUpdate={handleUpdate}
+                onDelete={handleDelete}
+                importSlot={<ImportButton onImported={() => Promise.all([loadList(), loadStats()])} />}
+              />
             )}
-            {tab === 'path' && <PathView stats={stats} />}
+            {tab === 'path' && (
+              <PathView stats={stats} footer={<ShareProfile user={user} onUserChange={onUserChange} />} />
+            )}
             {tab === 'search' && (
               <SearchView
                 query={query}

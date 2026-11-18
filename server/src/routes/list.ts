@@ -1,9 +1,24 @@
-import { Router } from 'express'
+import express, { Router } from 'express'
 import type { Db } from '../db.js'
 import { asyncHandler, requireAuth, type AuthedRequest } from '../lib/auth.js'
 import { isIsoDate, isNonNegativeInt, isPositiveInt, isStatus, isValidScore, toIntOrNull } from '../lib/validation.js'
+import type { CachedClient } from '../lib/cachedClient.js'
+import { ImportFormatError, parseListExport } from '../lib/listImport.js'
+import { fillPosters } from '../lib/posters.js'
 
-export function listRouter({ db, jwtSecret }: { db: Db; jwtSecret: string }) {
+/** Статистика одним агрегирующим запросом — общая для своего и публичного профиля */
+export const STATS_SQL = `
+  SELECT
+    COUNT(*) FILTER (WHERE status = 'watching')::int  AS watching,
+    COUNT(*) FILTER (WHERE status = 'completed')::int AS completed,
+    COUNT(*) FILTER (WHERE status = 'planning')::int  AS planning,
+    COUNT(*) FILTER (WHERE status = 'dropped')::int   AS dropped,
+    COALESCE(ROUND(AVG(score), 1)::float, 0)          AS avg_score,
+    COALESCE(SUM(watched_episodes), 0)::int           AS total_episodes
+  FROM anime_list WHERE user_id = $1
+`
+
+export function listRouter({ db, jwtSecret, anilist }: { db: Db; jwtSecret: string; anilist: CachedClient }) {
   const router = Router()
   const auth = requireAuth(jwtSecret)
 
@@ -131,22 +146,63 @@ export function listRouter({ db, jwtSecret }: { db: Db; jwtSecret: string }) {
     })
   )
 
+  // Импорт выгрузки MyAnimeList (XML) или Шикимори (XML/JSON). ?mode=overwrite — перезаписать совпадения
+  router.post(
+    '/list/import',
+    auth,
+    express.text({ type: () => true, limit: '5mb' }),
+    asyncHandler<AuthedRequest>(async (req, res) => {
+      if (typeof req.body !== 'string' || !req.body.trim())
+        return res.status(400).json({ error: 'Send the export file contents' })
+
+      let entries
+      try {
+        entries = parseListExport(req.body)
+      } catch (err) {
+        if (err instanceof ImportFormatError) return res.status(400).json({ error: err.message })
+        throw err
+      }
+
+      const overwrite = req.query.mode === 'overwrite'
+      const col = <K extends keyof (typeof entries)[number]>(k: K) => entries.map((e) => e[k])
+      const { rows } = await db.query<{ anime_id: number; inserted: boolean }>(
+        `INSERT INTO anime_list
+           (user_id, anime_id, title, episodes, status, score, watched_episodes, started_at, finished_at, rewatch_count, notes)
+         SELECT $1, * FROM unnest(
+           $2::int[], $3::text[], $4::int[], $5::text[], $6::int[], $7::int[], $8::date[], $9::date[], $10::int[], $11::text[]
+         )
+         ON CONFLICT (user_id, anime_id) DO ${
+           overwrite
+             ? `UPDATE SET status = EXCLUDED.status, score = EXCLUDED.score,
+                  watched_episodes = EXCLUDED.watched_episodes, started_at = EXCLUDED.started_at,
+                  finished_at = EXCLUDED.finished_at, rewatch_count = EXCLUDED.rewatch_count,
+                  notes = COALESCE(EXCLUDED.notes, anime_list.notes), updated_at = NOW()`
+             : 'NOTHING'
+         }
+         RETURNING anime_id, (xmax = 0) AS inserted`,
+        [
+          req.user.id,
+          col('anime_id'), col('title'), col('episodes'), col('status'), col('score'), col('watched_episodes'),
+          col('started_at'), col('finished_at'), col('rewatch_count'), col('notes'),
+        ]
+      )
+
+      const added = rows.filter((r) => r.inserted).map((r) => r.anime_id)
+      const updated = rows.length - added.length
+      // Постеры: небольшие списки ждём, большие дотягиваем в фоне
+      if (added.length <= 200) await fillPosters(db, anilist, req.user.id, added)
+      else void fillPosters(db, anilist, req.user.id, added)
+
+      res.json({ total: entries.length, added: added.length, updated, skipped: entries.length - rows.length })
+    })
+  )
+
   // Статистика одним агрегирующим запросом
   router.get(
     '/stats',
     auth,
     asyncHandler<AuthedRequest>(async (req, res) => {
-      const { rows } = await db.query(
-        `SELECT
-           COUNT(*) FILTER (WHERE status = 'watching')::int  AS watching,
-           COUNT(*) FILTER (WHERE status = 'completed')::int AS completed,
-           COUNT(*) FILTER (WHERE status = 'planning')::int  AS planning,
-           COUNT(*) FILTER (WHERE status = 'dropped')::int   AS dropped,
-           COALESCE(ROUND(AVG(score), 1)::float, 0)          AS avg_score,
-           COALESCE(SUM(watched_episodes), 0)::int           AS total_episodes
-         FROM anime_list WHERE user_id = $1`,
-        [req.user.id]
-      )
+      const { rows } = await db.query(STATS_SQL, [req.user.id])
       res.json(rows[0])
     })
   )

@@ -52,11 +52,18 @@ const upstream = fakeHttp([
     /anilist/,
     (_url, body) => {
       if (anilistDown) return { status: 0, data: null }
-      const { query, variables } = body as { query: string; variables?: { idMal?: number } }
+      const { query, variables } = body as { query: string; variables?: { idMal?: number; ids?: number[] } }
       if (query.includes('Media(idMal')) {
         return variables?.idMal === 52991
           ? { status: 200, data: { data: { Media: FRIEREN } } }
           : { status: 404, data: { errors: [{ message: 'Not Found.' }] } }
+      }
+      if (query.includes('idMal_in')) {
+        const ids = (variables as { ids: number[] }).ids
+        return {
+          status: 200,
+          data: { data: { Page: { media: ids.map((id) => ({ idMal: id, coverImage: { large: `poster-${id}.jpg` }, episodes: 12 })) } } },
+        }
       }
       if (query.includes('$search')) {
         return { status: 200, data: { data: { Page: { media: [FRIEREN, media(null, 'AniList-only')] } } } }
@@ -279,6 +286,113 @@ describe('anime list', () => {
     await expect(
       db.query(`INSERT INTO anime_list (user_id, anime_id, title, status) VALUES (NULL, 7, 't', 'binging')`)
     ).rejects.toThrow(/anime_list_status_check/)
+  })
+})
+
+const MAL_XML = `<?xml version="1.0" encoding="UTF-8" ?>
+<myanimelist>
+  <myinfo><user_name>musashi</user_name></myinfo>
+  <anime>
+    <series_animedb_id>1</series_animedb_id>
+    <series_title><![CDATA[Cowboy Bebop]]></series_title>
+    <series_episodes>26</series_episodes>
+    <my_watched_episodes>26</my_watched_episodes>
+    <my_start_date>2019-03-01</my_start_date>
+    <my_finish_date>0000-00-00</my_finish_date>
+    <my_score>9</my_score>
+    <my_status>Completed</my_status>
+    <my_comments><![CDATA[See you, space cowboy & co]]></my_comments>
+    <my_times_watched>2</my_times_watched>
+  </anime>
+  <anime>
+    <series_animedb_id>30</series_animedb_id>
+    <series_title><![CDATA[Neon Genesis Evangelion]]></series_title>
+    <series_episodes>0</series_episodes>
+    <my_watched_episodes>5</my_watched_episodes>
+    <my_start_date>2020-00-00</my_start_date>
+    <my_score>0</my_score>
+    <my_status>On-Hold</my_status>
+  </anime>
+  <anime>
+    <series_animedb_id>5114</series_animedb_id>
+    <series_title><![CDATA[FMA: Brotherhood]]></series_title>
+    <series_episodes>64</series_episodes>
+    <my_watched_episodes>999</my_watched_episodes>
+    <my_status>Plan to Watch</my_status>
+  </anime>
+  <anime><series_animedb_id>0</series_animedb_id><my_status>Completed</my_status></anime>
+</myanimelist>`
+
+describe('list import', () => {
+  const importAs = (auth: Record<string, string>, body: string, query = '') =>
+    request(app).post(`/list/import${query}`).set(auth).set('Content-Type', 'text/plain').send(body)
+
+  it('imports a MyAnimeList XML export and fills in posters', async () => {
+    const { auth } = await signUp('jubei')
+    const res = await importAs(auth, MAL_XML)
+    expect(res.body).toEqual({ total: 3, added: 3, updated: 0, skipped: 0 })
+
+    const list = (await request(app).get('/list').set(auth)).body as Record<string, unknown>[]
+    const byId = Object.fromEntries(list.map((e) => [e.anime_id, e]))
+    expect(byId[1]).toMatchObject({
+      title: 'Cowboy Bebop', status: 'completed', score: 9, watched_episodes: 26,
+      started_at: '2019-03-01', finished_at: null, rewatch_count: 2, notes: 'See you, space cowboy & co',
+      image: 'poster-1.jpg',
+    })
+    // On-Hold считается «смотрю»; неизвестное число серий берётся из AniList; неполная дата отбрасывается
+    expect(byId[30]).toMatchObject({ status: 'watching', score: null, episodes: 12, started_at: null })
+    expect(byId[5114]).toMatchObject({ status: 'planning', watched_episodes: 64 })
+  })
+
+  it('skips titles already in the scrolls unless asked to overwrite', async () => {
+    const { auth } = await signUp('gonbe')
+    await request(app).post('/list').set(auth).send({ anime_id: 1, title: 'Bebop', episodes: 26 })
+
+    expect((await importAs(auth, MAL_XML)).body).toEqual({ total: 3, added: 2, updated: 0, skipped: 1 })
+    expect((await importAs(auth, MAL_XML, '?mode=overwrite')).body).toEqual({ total: 3, added: 0, updated: 3, skipped: 0 })
+    const bebop = (await request(app).get('/list').set(auth)).body.find((e: { anime_id: number }) => e.anime_id === 1)
+    expect(bebop).toMatchObject({ status: 'completed', score: 9 })
+  })
+
+  it('imports a Shikimori JSON export', async () => {
+    const { auth } = await signUp('matahachi')
+    const json = JSON.stringify([
+      { target_id: 21, target_title: 'One Piece', target_type: 'Anime', status: 'rewatching', score: 10, episodes: 1100, rewatches: 1 },
+      { target_id: 2, target_title: 'Berserk', target_type: 'Manga', status: 'completed', score: 10 },
+      { target_id: 9253, target_title: 'Steins;Gate', target_type: 'Anime', status: 'planned', score: 0 },
+    ])
+    expect((await importAs(auth, json)).body).toEqual({ total: 2, added: 2, updated: 0, skipped: 0 })
+  })
+
+  it('explains what is wrong with a bad file', async () => {
+    const { auth } = await signUp('kohei')
+    const notAnExport = await importAs(auth, 'hello there')
+    expect(notAnExport.status).toBe(400)
+    expect(notAnExport.body.error).toMatch(/not a MyAnimeList or Shikimori export/)
+    expect((await importAs(auth, '<myanimelist></myanimelist>')).body.error).toMatch(/No anime found/)
+    expect((await importAs(auth, '[oops')).body.error).toMatch(/could not be read/)
+  })
+})
+
+describe('public profiles', () => {
+  it('stay private until the owner opens them, and hide notes', async () => {
+    const { auth } = await signUp('Sukeroku')
+    await request(app).post('/list').set(auth).send({ anime_id: 1, title: 'Bebop', episodes: 26 })
+    await request(app).patch('/list/1').set(auth).send({ status: 'completed', score: 9, notes: 'secret' })
+
+    expect((await request(app).get('/public/sukeroku')).status).toBe(404)
+    expect((await request(app).get('/public/nobody-at-all')).status).toBe(404)
+
+    const me = await request(app).patch('/auth/me').set(auth).send({ is_public: true })
+    expect(me.body.is_public).toBe(true)
+
+    const pub = await request(app).get('/public/SUKEROKU')
+    expect(pub.status).toBe(200)
+    expect(pub.body).toMatchObject({ username: 'Sukeroku', stats: { completed: 1, avg_score: 9 } })
+    expect(pub.body.list[0]).toMatchObject({ anime_id: 1, score: 9 })
+    expect(pub.body.list[0].notes).toBeUndefined()
+
+    expect((await request(app).patch('/auth/me').set(auth).send({ is_public: 'yes' })).status).toBe(400)
   })
 })
 

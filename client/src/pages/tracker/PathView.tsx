@@ -2,10 +2,11 @@ import { Link } from 'react-router-dom'
 import Enso from '../../components/Enso'
 import { STATUSES, STATUS_KEYS } from '../../lib/status'
 import type { Stats } from '../../types'
+import type { ReactNode } from 'react'
 
 const MINUTES_PER_EPISODE = 24
 
-export default function PathView({ stats }: { stats: Stats | null }) {
+export default function PathView({ stats, footer }: { stats: Stats | null; footer?: ReactNode }) {
   if (!stats) return <Enso label="Tracing your path…" />
 
   const total = STATUS_KEYS.reduce((sum, k) => sum + (stats[k] || 0), 0)
@@ -64,6 +65,8 @@ export default function PathView({ stats }: { stats: Stats | null }) {
           ' Score a few titles to see your average.'
         )}
       </p>
+
+      {footer}
     </>
   )
 }

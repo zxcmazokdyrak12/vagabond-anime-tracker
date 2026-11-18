@@ -5,6 +5,22 @@ export interface User {
   id: number
   username: string
   email: string
+  /** Профиль /u/:username открыт всем */
+  is_public?: boolean
+}
+
+export interface ImportResult {
+  total: number
+  added: number
+  updated: number
+  skipped: number
+}
+
+export interface PublicProfile {
+  username: string
+  member_since: string
+  stats: Stats
+  list: Pick<ListEntry, 'anime_id' | 'title' | 'image' | 'episodes' | 'status' | 'score' | 'watched_episodes' | 'finished_at' | 'rewatch_count'>[]
 }
 
 export interface AuthResponse {

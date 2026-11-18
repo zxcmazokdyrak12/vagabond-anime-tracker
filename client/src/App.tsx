@@ -5,6 +5,7 @@ import { getMe } from './api'
 import AuthPage from './pages/AuthPage'
 import TrackerPage from './pages/TrackerPage'
 import AnimeDetailPage from './pages/AnimeDetailPage'
+import PublicProfilePage from './pages/PublicProfilePage'
 import Enso from './components/Enso'
 import Intro from './components/Intro'
 import type { User } from './types'
@@ -63,25 +64,30 @@ export default function App() {
     setUser(null)
   }
 
+  const authed = loading ? (
+    <main className="page">
+      <Enso label="Waking the server… the first visit can take half a minute." />
+    </main>
+  ) : !user ? (
+    <AuthPage onLogin={handleLogin} />
+  ) : null
+
   return (
     <MotionConfig reducedMotion="user">
       {/* Приложение грузится под заставкой: пока режешь лист, сервер уже просыпается */}
       {showIntro && <Intro onDone={finishIntro} />}
-      {loading ? (
-        <main className="page">
-          <Enso label="Waking the server… the first visit can take half a minute." />
-        </main>
-      ) : !user ? (
-        <AuthPage onLogin={handleLogin} />
-      ) : (
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<TrackerPage user={user} onLogout={handleLogout} />} />
-            <Route path="/anime/:id" element={<DetailRoute user={user} onLogout={handleLogout} />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
-      )}
+      <BrowserRouter>
+        <Routes>
+          {/* Публичный профиль открывается без входа */}
+          <Route path="/u/:username" element={<PublicProfilePage signedIn={Boolean(user)} />} />
+          <Route
+            path="/"
+            element={authed ?? <TrackerPage user={user!} onLogout={handleLogout} onUserChange={setUser} />}
+          />
+          <Route path="/anime/:id" element={authed ?? <DetailRoute user={user!} onLogout={handleLogout} />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
     </MotionConfig>
   )
 }

@@ -1747,3 +1747,42 @@ kbd {
   text-align: center;
   color: var(--ink);
 }
+
+/* ── Импорт ─────────────────────────────────────────────────── */
+.import-steps {
+  margin: 0.5rem 0 1.25rem 1.1rem;
+  font-size: var(--step--1);
+  line-height: 1.7;
+}
+
+.import-steps li + li {
+  margin-top: 0.4rem;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+  font-size: var(--step--1);
+  cursor: pointer;
+}
+
+.check input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--ink);
+}
+
+.import-result {
+  margin-top: 1rem;
+  font-weight: 600;
+}
+
+.share__link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  font-size: var(--step--1);
+}

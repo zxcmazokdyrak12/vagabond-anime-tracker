@@ -1,6 +1,7 @@
 import axios from 'axios'
 import type {
-  Anime, AuthResponse, Character, Episode, ListEntry, ListPatch, NewListEntry, Paged, Stats, User,
+  Anime, AuthResponse, Character, Episode, ImportResult, ListEntry, ListPatch, NewListEntry, Paged, PublicProfile, Stats,
+  User,
 } from '../types'
 
 // Локально: создай client/.env с VITE_API_URL=http://localhost:3002
@@ -32,6 +33,9 @@ export const register = (data: { username: string; email: string; password: stri
   api.post<AuthResponse>('/auth/register', data)
 export const login = (data: { email: string; password: string }) => api.post<AuthResponse>('/auth/login', data)
 export const getMe = () => api.get<User>('/auth/me')
+export const updateMe = (data: { is_public: boolean }) => api.patch<User>('/auth/me', data)
+export const getPublicProfile = (username: string) =>
+  api.get<PublicProfile>(`/public/${encodeURIComponent(username)}`)
 
 // Свитки
 export const getList = () => api.get<ListEntry[]>('/list')
@@ -39,6 +43,11 @@ export const addAnime = (data: NewListEntry) => api.post<ListEntry>('/list', dat
 export const updateAnime = (id: number, data: ListPatch) => api.patch<ListEntry>(`/list/${id}`, data)
 export const deleteAnime = (id: number) => api.delete<{ success: true }>(`/list/${id}`)
 export const getStats = () => api.get<Stats>('/stats')
+export const importList = (fileText: string, overwrite = false) =>
+  api.post<ImportResult>('/list/import', fileText, {
+    params: overwrite ? { mode: 'overwrite' } : undefined,
+    headers: { 'Content-Type': 'text/plain' },
+  })
 
 // Каталог — всё через наш сервер: там кеш и очередь под лимиты Jikan
 export const searchAnime = (query: string) => api.get<Paged<Anime>>('/api/anime/search', { params: { q: query } })
