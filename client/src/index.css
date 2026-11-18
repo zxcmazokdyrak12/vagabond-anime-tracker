@@ -1314,6 +1314,190 @@ a:focus-visible .ink-frame img,
   );
 }
 
+/* ── Заставка: энсо, пробуждение сервера, удар мечом ─────────── */
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.intro__sheet {
+  position: absolute;
+  inset: 0;
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  color: var(--ink);
+}
+
+/* Половинки листа после разреза — линия совпадает с лезвием */
+.intro__sheet--a {
+  clip-path: polygon(0 0, 100% 0, 100% 38%, 0 62%);
+}
+
+.intro__sheet--b {
+  clip-path: polygon(0 62%, 100% 38%, 100% 100%, 0 100%);
+}
+
+/* Энсо и иероглиф — по центру верхней части листа */
+.intro__art {
+  position: absolute;
+  left: 50%;
+  top: 36%;
+  width: min(50vh, 72vw);
+  height: min(50vh, 72vw);
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+}
+
+.intro__enso {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.intro__kanji {
+  position: relative;
+  font-size: min(22vh, 32vw);
+  line-height: 1;
+}
+
+.intro__blade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.intro__blade line {
+  stroke: var(--seal);
+  stroke-width: 3px;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 6px var(--seal));
+}
+
+.intro__trail {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.intro__trail line {
+  stroke: var(--ink);
+  stroke-width: 5;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.intro__ui {
+  position: absolute;
+  left: 50%;
+  bottom: max(2.5rem, 7vh);
+  transform: translateX(-50%);
+  width: min(34rem, calc(100% - 2.5rem));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  z-index: 3;
+  color: var(--ink);
+}
+
+.intro__title {
+  font-size: var(--step-3);
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 1.5rem;
+}
+
+.intro__sub {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: var(--step--1);
+  font-weight: 400;
+  color: var(--wash);
+  letter-spacing: 0.3em;
+}
+
+.intro__wake {
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+.intro__wake-track {
+  position: relative;
+  display: block;
+  height: 4px;
+  margin: 0 auto 0.6rem;
+  max-width: 16rem;
+  background: var(--paper-deep);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.intro__wake-ink {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--ink);
+  border-radius: 1px 3px 3px 1px;
+  transition: width 0.6s var(--ease-brush);
+}
+
+.intro__wake-text {
+  font-size: var(--step--1);
+  color: var(--wash);
+  font-variant-numeric: tabular-nums;
+}
+
+.intro__enter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3rem;
+  padding: 0.5rem 2rem;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: var(--step-1);
+  font-weight: 600;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.intro__enter:hover {
+  transform: translateY(-1px);
+}
+
+/* Маленький клинок слева от слова */
+.intro__blade-mark {
+  width: 1.75rem;
+  height: 2px;
+  background: currentColor;
+  border-radius: 0 2px 2px 0;
+  transform: rotate(-12deg);
+}
+
+.intro__hint {
+  margin-top: 0.85rem;
+  font-size: 0.75rem;
+  color: var(--wash);
+}
+
+.intro--cut {
+  pointer-events: none;
+}
+
 /* ── Адаптив ────────────────────────────────────────────────── */
 @media (max-width: 960px) {
   .gate-columns,

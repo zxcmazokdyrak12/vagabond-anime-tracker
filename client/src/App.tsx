@@ -6,6 +6,7 @@ import AuthPage from './pages/AuthPage'
 import TrackerPage from './pages/TrackerPage'
 import AnimeDetailPage from './pages/AnimeDetailPage'
 import Enso from './components/Enso'
+import Intro from './components/Intro'
 import type { User } from './types'
 
 interface PageProps {
@@ -19,7 +20,19 @@ function DetailRoute(props: PageProps) {
   return <AnimeDetailPage key={id} {...props} />
 }
 
+const INTRO_KEY = 'intro-seen'
+
+// Заставка показывается раз за сессию браузера
+const introSeen = () => {
+  try {
+    return sessionStorage.getItem(INTRO_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 export default function App() {
+  const [showIntro, setShowIntro] = useState(() => !introSeen())
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(() => Boolean(localStorage.getItem('token')))
 
@@ -36,6 +49,15 @@ export default function App() {
     setUser(userData)
   }
 
+  const finishIntro = () => {
+    try {
+      sessionStorage.setItem(INTRO_KEY, '1')
+    } catch {
+      // приватный режим — заставка покажется ещё раз, не страшно
+    }
+    setShowIntro(false)
+  }
+
   const handleLogout = () => {
     localStorage.removeItem('token')
     setUser(null)
@@ -43,6 +65,8 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
+      {/* Приложение грузится под заставкой: пока режешь лист, сервер уже просыпается */}
+      {showIntro && <Intro onDone={finishIntro} />}
       {loading ? (
         <main className="page">
           <Enso label="Waking the server… the first visit can take half a minute." />

@@ -40,6 +40,7 @@
 ## 👁️ Visual Philosophy & UX Innovations
 
 * **Ink on paper:** Vagabond is drawn in sumi ink on paper, so the whole app is a sheet of washi. Every poster is *printed in ink* (grayscale, blended into the paper with `mix-blend-mode: multiply`) and the colour bleeds back in when you hover or focus it.
+* **The intro (抜刀, drawing the sword):** an ensō draws itself and 武 bleeds through the paper while the app quietly wakes the free-tier server, with a live timer. You enter with one cut: drag across the screen (or press Enter) and the sheet splits along the blade. Once per session, Esc skips, and it respects reduced motion.
 * **Two themes:** paper (紙) by default and night (夜) for the dark. The choice follows the system setting and is remembered.
 * **Brush only where it matters:** large kanji are set in the brush face *Yuji Boku*; everything else in the mincho *Shippori Mincho B1*. Red appears only as seals: the logo, the active section and the 録 stamp that lands on a poster when you add it.
 * **THE GATE (門):** the top five titles with their Japanese names written vertically like a scroll inscription, this season's anime and the top ten ranked in kanji numerals.
@@ -83,7 +84,7 @@ Browser ──► Express API ──► PostgreSQL (raw SQL, migrations)
 * **Operational:** central error handling (upstream 404 → 404, 429/5xx → 502), graceful shutdown on `SIGTERM`.
 
 ### Quality
-* **51 automated tests.** Server: 26 API and unit tests (Vitest + Supertest) against a real PostgreSQL: auth, rate limiting, list CRUD, cross-user isolation, stats, migrations, cache behaviour. Client: 25 component and integration tests (Vitest + Testing Library).
+* **56 automated tests.** Server: 26 API and unit tests (Vitest + Supertest) against a real PostgreSQL: auth, rate limiting, list CRUD, cross-user isolation, stats, migrations, cache behaviour. Client: 30 component and integration tests (Vitest + Testing Library).
 * **CI on every pull request:** lint, typecheck, tests and build for both apps, plus a boot check that starts the server exactly like Render does.
 
 ---
