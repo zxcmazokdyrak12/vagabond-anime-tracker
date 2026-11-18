@@ -6,10 +6,19 @@ import type { ReactNode } from 'react'
 
 const MINUTES_PER_EPISODE = 24
 
-export default function PathView({ stats, footer }: { stats: Stats | null; footer?: ReactNode }) {
+interface Props {
+  stats: Stats | null
+  footer?: ReactNode
+  /** Чей путь: не задан — свой («you»), иначе имя владельца публичного профиля */
+  owner?: string
+}
+
+export default function PathView({ stats, footer, owner }: Props) {
   if (!stats) return <Enso label="Tracing your path…" />
 
   const total = STATUS_KEYS.reduce((sum, k) => sum + (stats[k] || 0), 0)
+
+  if (total === 0 && owner) return <p className="muted">{owner} hasn’t added any titles yet.</p>
 
   if (total === 0) {
     return (
@@ -51,18 +60,19 @@ export default function PathView({ stats, footer }: { stats: Stats | null; foote
         )}
       </div>
       <p className="muted" style={{ fontSize: 'var(--step--1)' }}>
-        {total} {total === 1 ? 'title' : 'titles'} in your scrolls
+        {total} {total === 1 ? 'title' : 'titles'} in {owner ? 'their' : 'your'} scrolls
       </p>
 
       <p className="path-summary">
-        You’ve watched <strong>{stats.total_episodes || 0}</strong> episodes, roughly {hours}{' '}
+        {owner ? `${owner} has` : 'You’ve'} watched <strong>{stats.total_episodes || 0}</strong> episodes, roughly {hours}{' '}
         {hours === 1 ? 'hour' : 'hours'} on the road.
         {stats.avg_score ? (
           <>
-            {' '}Your average score is <strong>{stats.avg_score}</strong>.
+            {' '}
+            {owner ? 'Their' : 'Your'} average score is <strong>{stats.avg_score}</strong>.
           </>
         ) : (
-          ' Score a few titles to see your average.'
+          owner ? '' : ' Score a few titles to see your average.'
         )}
       </p>
 

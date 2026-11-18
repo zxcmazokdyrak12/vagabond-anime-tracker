@@ -31,7 +31,8 @@ describe('PublicProfilePage', () => {
     } as never)
     renderAt('/u/musashi')
 
-    expect(await screen.findByRole('heading', { name: 'musashi’s path' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'musashi' })).toBeInTheDocument()
+    expect(screen.getByText(/musashi has watched/)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /Completed/ })).toHaveTextContent('1 title')
     expect(screen.getByText('Scored 9, 26/26 ep.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Start your own path' })).toHaveAttribute('href', '/')

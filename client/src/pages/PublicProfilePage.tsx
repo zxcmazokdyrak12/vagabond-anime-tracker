@@ -63,17 +63,14 @@ export default function PublicProfilePage({ signedIn }: { signedIn: boolean }) {
           </Notice>
         ) : profile ? (
           <>
-            <h1 className="page-title">
-              {profile.username}
-              <span className="muted">’s path</span>
-            </h1>
+            <h1 className="page-title">{profile.username}</h1>
             <p className="lede">
               On the road since{' '}
               {new Date(profile.member_since).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}.
             </p>
 
             <div className="section">
-              <PathView stats={profile.stats} />
+              <PathView stats={profile.stats} owner={profile.username} />
             </div>
 
             {STATUS_KEYS.map((status) => {
