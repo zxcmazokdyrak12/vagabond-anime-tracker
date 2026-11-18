@@ -2,27 +2,35 @@
 
 <table width="100%">
   <tr>
-    <td width="50%" align="center"><b>The Gate</b></td>
-    <td width="50%" align="center"><b>My Scrolls</b></td>
+    <td width="50%" align="center"><b>The Gate, with picks for you</b></td>
+    <td width="50%" align="center"><b>My Scrolls: dates, notes, rewatches</b></td>
   </tr>
   <tr>
     <td><img src="docs/gate.jpg" width="100%"></td>
     <td><img src="docs/scrolls.jpg" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><b>The Path</b></td>
-    <td align="center"><b>Title page, night theme</b></td>
+    <td align="center"><b>The Path and the card for stories</b></td>
+    <td align="center"><b>This week, in Russian</b></td>
   </tr>
   <tr>
     <td><img src="docs/path.jpg" width="100%"></td>
-    <td><img src="docs/title-night.jpg" width="100%"></td>
+    <td><img src="docs/week-ru.jpg" width="100%"></td>
   </tr>
   <tr>
+    <td align="center"><b>Title page, night theme</b></td>
     <td align="center"><b>Sign in</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/title-night.jpg" width="100%"></td>
+    <td><img src="docs/login.jpg" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>The intro: cut through to enter</b></td>
     <td align="center"><b>Mobile</b></td>
   </tr>
   <tr>
-    <td><img src="docs/login.jpg" width="100%"></td>
+    <td><img src="docs/intro.jpg" width="100%"></td>
     <td align="center"><img src="docs/scrolls-mobile.jpg" width="45%"></td>
   </tr>
 </table>
