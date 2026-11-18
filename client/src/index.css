@@ -1908,3 +1908,29 @@ kbd {
     grid-column: 1 / -1;
   }
 }
+
+/* ── Карточка «Мой путь» ─────────────────────────────────────── */
+.share-card__row {
+  display: grid;
+  grid-template-columns: minmax(12rem, 18rem) 1fr;
+  gap: 2rem;
+  align-items: center;
+}
+
+.share-card__canvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1080 / 1350;
+  border-radius: 3px;
+  box-shadow: 0 18px 40px -24px color-mix(in srgb, var(--ink) 70%, transparent);
+}
+
+@media (max-width: 720px) {
+  .share-card__row {
+    grid-template-columns: 1fr;
+  }
+
+  .share-card__canvas {
+    max-width: 16rem;
+  }
+}

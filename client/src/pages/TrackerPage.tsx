@@ -15,6 +15,7 @@ import CalendarView, { type CalendarState } from './tracker/CalendarView'
 import { posterOf } from '../lib/status'
 import { ImportButton } from '../components/ImportDialog'
 import ShareProfile from '../components/ShareProfile'
+import ShareCard from '../components/ShareCard'
 import type { Anime, ListEntry, ListPatch, Recommendation, Stats, User } from '../types'
 
 const TAB_IDS: TabId[] = ['gate', 'scrolls', 'path', 'calendar', 'search']
@@ -253,7 +254,23 @@ export default function TrackerPage({ user, onLogout, onUserChange }: Props) {
               />
             )}
             {tab === 'path' && (
-              <PathView stats={stats} footer={<ShareProfile user={user} onUserChange={onUserChange} />} />
+              <PathView
+                stats={stats}
+                footer={
+                  <>
+                    {stats && (
+                      <ShareCard
+                        username={user.username}
+                        stats={stats}
+                        list={list}
+                        hours={Math.round((stats.total_episodes * 24) / 60)}
+                        isPublic={Boolean(user.is_public)}
+                      />
+                    )}
+                    <ShareProfile user={user} onUserChange={onUserChange} />
+                  </>
+                }
+              />
             )}
             {tab === 'calendar' && (
               <CalendarView
