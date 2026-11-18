@@ -1594,3 +1594,156 @@ a:focus-visible .ink-frame img,
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Свитки: панель, детали строки ──────────────────────────── */
+.scrolls-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  margin-bottom: 2rem;
+}
+
+.scrolls-toolbar .filters {
+  margin-bottom: 0;
+}
+
+.scrolls-toolbar__right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.field--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.scroll-row {
+  position: relative;
+}
+
+.scroll-row:focus-visible {
+  outline: none;
+  box-shadow: inset 3px 0 0 var(--ink);
+  background: color-mix(in srgb, var(--paper-deep) 55%, transparent);
+}
+
+.details-toggle {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--wash);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.details-toggle:hover {
+  color: var(--ink);
+}
+
+.scroll-details {
+  grid-column: 2 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, max-content) minmax(14rem, 1fr);
+  gap: 1rem 1.5rem;
+  align-items: start;
+  padding: 0.75rem 0 0.25rem;
+}
+
+.input-date,
+.input-notes {
+  min-height: 2.5rem;
+  padding: 0.35rem 0.6rem;
+  background: var(--paper-deep);
+  border: none;
+  border-radius: 2px;
+  color: var(--ink);
+  font-size: var(--step--1);
+  color-scheme: inherit;
+}
+
+.input-notes {
+  width: 100%;
+  resize: vertical;
+  line-height: 1.6;
+  font-family: inherit;
+}
+
+.rewatch-count {
+  min-width: 4.5rem;
+  text-align: center;
+  font-size: var(--step--1);
+  color: var(--ink);
+  align-self: center;
+}
+
+.saved-mark {
+  color: var(--ai);
+  margin-left: 0.4rem;
+}
+
+@media (max-width: 960px) {
+  .scroll-details {
+    grid-template-columns: repeat(3, max-content);
+  }
+
+  .scroll-details__notes {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .scroll-details {
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ── Диалог ─────────────────────────────────────────────────── */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.dialog {
+  width: min(34rem, 100%);
+  max-height: calc(100svh - 3rem);
+  overflow: auto;
+  padding: 1.75rem 2rem 2rem;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 3px;
+  box-shadow: 0 24px 60px -20px color-mix(in srgb, var(--ink) 60%, transparent);
+}
+
+.dialog__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.shortcuts dt {
+  display: flex;
+  gap: 0.3rem;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.6rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--line), 0 1px 0 var(--line);
+  font-family: inherit;
+  font-size: 0.8rem;
+  text-align: center;
+  color: var(--ink);
+}

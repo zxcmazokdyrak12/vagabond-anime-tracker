@@ -4,7 +4,10 @@ import type { Express } from 'express'
 import { createApp } from '../src/app.js'
 import type { Db } from '../src/db.js'
 import { runMigrations } from '../src/migrate.js'
+import { readdirSync } from 'node:fs'
 import { JWT_SECRET, fakeHttp, freshDb } from './helpers.js'
+
+const ALL_MIGRATIONS = readdirSync(new URL('../migrations', import.meta.url)).filter((f) => f.endsWith('.sql')).sort()
 
 const media = (idMal: number | null, romaji: string, extra: object = {}) => ({
   id: 1000 + (idMal ?? 0),
@@ -101,13 +104,13 @@ afterAll(async () => {
 describe('migrations', () => {
   it('are recorded and not applied twice', async () => {
     const { rows } = await db.query('SELECT name FROM schema_migrations ORDER BY name')
-    expect(rows.map((r) => r.name)).toEqual(['001_initial.sql', '002_list_constraints.sql'])
+    expect(rows.map((r) => r.name)).toEqual(ALL_MIGRATIONS)
     expect(await runMigrations(db, undefined, () => {})).toEqual([])
   })
 
   it('survive losing the history table (the database is shared with a Prisma app)', async () => {
     await db.query('DROP TABLE schema_migrations')
-    expect(await runMigrations(db, undefined, () => {})).toEqual(['001_initial.sql', '002_list_constraints.sql'])
+    expect(await runMigrations(db, undefined, () => {})).toEqual(ALL_MIGRATIONS)
   })
 })
 
@@ -182,6 +185,48 @@ describe('anime list', () => {
 
     expect((await request(app).delete('/list/52991').set(auth)).status).toBe(200)
     expect((await request(app).delete('/list/52991').set(auth)).status).toBe(404)
+  })
+
+  it('tracks dates, notes and rewatches', async () => {
+    const { auth } = await signUp('iori')
+    await request(app).post('/list').set(auth).send({ anime_id: 30, title: 'Evangelion', episodes: 26 })
+    const today = new Date().toISOString().slice(0, 10)
+
+    // Начал смотреть — дата старта ставится сама; досмотрел — дата финиша
+    const watching = await request(app).patch('/list/30').set(auth).send({ status: 'watching' })
+    expect(watching.body).toMatchObject({ started_at: today, finished_at: null })
+    const done = await request(app).patch('/list/30').set(auth).send({ status: 'completed' })
+    expect(done.body).toMatchObject({ started_at: today, finished_at: today })
+
+    // Явно переданные даты важнее автоматических
+    const custom = await request(app)
+      .patch('/list/30')
+      .set(auth)
+      .send({ started_at: '2024-01-05', finished_at: '2024-02-10', notes: 'End of Eva hits hard', rewatch_count: 2 })
+    expect(custom.body).toMatchObject({
+      started_at: '2024-01-05',
+      finished_at: '2024-02-10',
+      notes: 'End of Eva hits hard',
+      rewatch_count: 2,
+    })
+
+    const cleared = await request(app).patch('/list/30').set(auth).send({ notes: '', finished_at: null })
+    expect(cleared.body).toMatchObject({ notes: null, finished_at: null, started_at: '2024-01-05' })
+  })
+
+  it('rejects bad dates, notes and empty updates', async () => {
+    const { auth } = await signUp('akemi')
+    await request(app).post('/list').set(auth).send({ anime_id: 31, title: 'Bebop', episodes: 26 })
+    for (const body of [
+      { started_at: '2024-02-30' },
+      { finished_at: '18.11.2026' },
+      { notes: 'x'.repeat(2001) },
+      { rewatch_count: -1 },
+      { watched_episodes: null },
+      {},
+    ]) {
+      expect((await request(app).patch('/list/31').set(auth).send(body)).status, JSON.stringify(body).slice(0, 40)).toBe(400)
+    }
   })
 
   it('validates input', async () => {

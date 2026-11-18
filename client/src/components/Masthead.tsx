@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { User } from '../types'
 import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import BrushStroke from './BrushStroke'
+import ShortcutsDialog from './ShortcutsDialog'
 import { useTheme } from '../lib/useTheme'
 
 const TABS: { id: TabId; glyph: string; label: string }[] = [
@@ -39,6 +40,25 @@ export default function Masthead({ user, onLogout, activeTab, initialQuery = '',
   const { theme, toggle } = useTheme()
   const [query, setQuery] = useState(initialQuery)
   const [slash, setSlash] = useState(false)
+  const [showKeys, setShowKeys] = useState(false)
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  // «/» — к поиску, «?» — список клавиш (если не печатаешь в поле)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement
+      if (el.closest('input, textarea, select, [contenteditable="true"]') || e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.key === '/') {
+        e.preventDefault()
+        searchRef.current?.focus()
+      } else if (e.key === '?') {
+        e.preventDefault()
+        setShowKeys((v) => !v)
+      } else if (e.key === 'Escape') setShowKeys(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -74,6 +94,7 @@ export default function Masthead({ user, onLogout, activeTab, initialQuery = '',
             Search anime
           </label>
           <input
+            ref={searchRef}
             id="site-search"
             type="search"
             placeholder="Search anime by title"
@@ -94,11 +115,22 @@ export default function Masthead({ user, onLogout, activeTab, initialQuery = '',
           >
             <span className="brush" aria-hidden="true">{theme === 'night' ? '紙' : '夜'}</span>
           </button>
+          <button
+            type="button"
+            className="text-btn"
+            onClick={() => setShowKeys(true)}
+            aria-keyshortcuts="?"
+            title="Keyboard shortcuts (?)"
+          >
+            Keys
+          </button>
           <button type="button" className="text-btn" onClick={onLogout}>
             Sign out
           </button>
         </div>
       </div>
+
+      {showKeys && <ShortcutsDialog onClose={() => setShowKeys(false)} />}
 
       <BrushStroke />
 

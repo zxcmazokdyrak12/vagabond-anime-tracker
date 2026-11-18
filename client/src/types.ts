@@ -24,9 +24,17 @@ export interface ListEntry {
   score: number | null
   watched_episodes: number
   created_at: string
+  updated_at?: string
+  /** «2026-11-18» */
+  started_at?: string | null
+  finished_at?: string | null
+  notes?: string | null
+  rewatch_count?: number
 }
 
-export type ListPatch = Partial<Pick<ListEntry, 'status' | 'score' | 'watched_episodes'>>
+export type ListPatch = Partial<
+  Pick<ListEntry, 'status' | 'score' | 'watched_episodes' | 'started_at' | 'finished_at' | 'notes' | 'rewatch_count'>
+>
 
 export interface NewListEntry {
   anime_id: number

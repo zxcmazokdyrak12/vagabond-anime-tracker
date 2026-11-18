@@ -82,4 +82,40 @@ describe('ScrollsView', () => {
     await user.click(screen.getByRole('button', { name: 'Remove Sousou no Frieren from scrolls' }))
     expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ anime_id: 52991 }))
   })
+
+  it('drives a focused row from the keyboard', async () => {
+    const { onUpdate, user } = setup([
+      entry({ anime_id: 1, title: 'First', watched_episodes: 3 }),
+      entry({ anime_id: 2, title: 'Second' }),
+    ])
+    const first = screen.getByRole('listitem', { name: 'First' })
+    first.focus()
+
+    await user.keyboard('+')
+    expect(onUpdate).toHaveBeenLastCalledWith(1, { watched_episodes: 4 })
+    await user.keyboard('-')
+    expect(onUpdate).toHaveBeenLastCalledWith(1, { watched_episodes: 2 })
+    await user.keyboard('2')
+    expect(onUpdate).toHaveBeenLastCalledWith(1, { status: 'completed' })
+
+    await user.keyboard('j')
+    expect(screen.getByRole('listitem', { name: 'Second' })).toHaveFocus()
+    await user.keyboard('k')
+    expect(first).toHaveFocus()
+  })
+
+  it('edits dates, rewatches and notes in the details panel', async () => {
+    const { onUpdate, user } = setup([entry({ rewatch_count: 1, notes: null })])
+    await user.click(screen.getByRole('button', { name: /^Details/ }))
+
+    await user.click(screen.getByRole('button', { name: 'Add a rewatch' }))
+    expect(onUpdate).toHaveBeenLastCalledWith(52991, { rewatch_count: 2 })
+
+    const notes = screen.getByRole('textbox', { name: /Notes/ })
+    await user.type(notes, 'Fern is the best')
+    expect(onUpdate).not.toHaveBeenCalledWith(52991, expect.objectContaining({ notes: expect.anything() }))
+    await user.tab() // заметка сохраняется, когда уходишь из поля
+    expect(onUpdate).toHaveBeenLastCalledWith(52991, { notes: 'Fern is the best' })
+  })
 })
+
