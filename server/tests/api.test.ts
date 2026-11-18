@@ -53,6 +53,11 @@ describe('migrations', () => {
     expect(rows.map((r) => r.name)).toEqual(['001_initial.sql', '002_list_constraints.sql'])
     expect(await runMigrations(db, undefined, () => {})).toEqual([])
   })
+
+  it('survive losing the history table (the database is shared with a Prisma app)', async () => {
+    await db.query('DROP TABLE schema_migrations')
+    expect(await runMigrations(db, undefined, () => {})).toEqual(['001_initial.sql', '002_list_constraints.sql'])
+  })
 })
 
 describe('auth', () => {

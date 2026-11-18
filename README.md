@@ -83,7 +83,7 @@ Browser ──► Express API ──► PostgreSQL (raw SQL, migrations)
 * **Operational:** central error handling (upstream 404 → 404, 429/5xx → 502), graceful shutdown on `SIGTERM`.
 
 ### Quality
-* **50 automated tests.** Server: 25 API and unit tests (Vitest + Supertest) against a real PostgreSQL: auth, rate limiting, list CRUD, cross-user isolation, stats, migrations, cache behaviour. Client: 25 component and integration tests (Vitest + Testing Library).
+* **51 automated tests.** Server: 26 API and unit tests (Vitest + Supertest) against a real PostgreSQL: auth, rate limiting, list CRUD, cross-user isolation, stats, migrations, cache behaviour. Client: 25 component and integration tests (Vitest + Testing Library).
 * **CI on every pull request:** lint, typecheck, tests and build for both apps, plus a boot check that starts the server exactly like Render does.
 
 ---
