@@ -1,6 +1,6 @@
 import axios from 'axios'
 import type {
-  Anime, AuthResponse, Character, Episode, ImportResult, ListEntry, ListPatch, NewListEntry, Paged, PublicProfile, Stats,
+  Anime, AuthResponse, CalendarEpisode, Character, Episode, Recommendation, ImportResult, ListEntry, ListPatch, NewListEntry, Paged, PublicProfile, Stats,
   User,
 } from '../types'
 
@@ -56,6 +56,10 @@ export const getSeasonNow = () => api.get<Paged<Anime>>('/api/anime/season')
 export const getAnimeFull = (id: number | string) => api.get<{ data: Anime }>(`/api/anime/${id}`)
 export const getAnimeCharacters = (id: number | string) => api.get<Paged<Character>>(`/api/anime/${id}/characters`)
 export const getAnimeEpisodes = (id: number | string) => api.get<Paged<Episode>>(`/api/anime/${id}/episodes`)
+
+// Календарь и рекомендации — по моему списку
+export const getCalendar = () => api.get<{ data: CalendarEpisode[] }>('/calendar')
+export const getRecommendations = () => api.get<{ data: Recommendation[]; seeds: string[] }>('/recommendations')
 
 /** HTTP-статус ошибки запроса или 'network', если ответа не было */
 export const errorStatus = (err: unknown): number | 'network' =>

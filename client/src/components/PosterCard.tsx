@@ -10,10 +10,12 @@ interface Props {
   /** Сейчас на постер ставится печать «録» */
   stamped: boolean
   onAdd: (anime: Anime) => void
+  /** Строка-пояснение под названием, например «почему рекомендуем» */
+  note?: string
 }
 
 // Постер тайтла в сетке: картинка-ссылка, название, кнопка «в свитки»
-export default function PosterCard({ anime, inList, stamped, onAdd }: Props) {
+export default function PosterCard({ anime, inList, stamped, onAdd, note }: Props) {
   const meta = [anime.score ? `Score ${anime.score}` : null, anime.episodes ? `${anime.episodes} ep.` : null].filter(
     Boolean
   )
@@ -24,7 +26,7 @@ export default function PosterCard({ anime, inList, stamped, onAdd }: Props) {
         <InkImage src={posterOf(anime)} />
         <span className="poster__title">{anime.title}</span>
       </Link>
-      <span className="poster__meta">{meta.length ? meta.join(', ') : ' '}</span>
+      <span className="poster__meta">{note ?? (meta.length ? meta.join(', ') : '\u00a0')}</span>
       <Stamp show={stamped} />
       <button
         type="button"

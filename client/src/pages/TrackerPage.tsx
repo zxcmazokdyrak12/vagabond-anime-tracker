@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  getList, getStats, searchAnime, addAnime, updateAnime, deleteAnime, getTopAnime, getSeasonNow,
+  getList, getStats, searchAnime, addAnime, updateAnime, deleteAnime, getTopAnime, getSeasonNow, getCalendar,
+  getRecommendations,
 } from '../api'
 import { errorStatus } from '../api'
 import Masthead, { type TabId } from '../components/Masthead'
@@ -10,12 +11,13 @@ import GateView, { type DiscoverState } from './tracker/GateView'
 import ScrollsView from './tracker/ScrollsView'
 import PathView from './tracker/PathView'
 import SearchView, { type SearchState } from './tracker/SearchView'
+import CalendarView, { type CalendarState } from './tracker/CalendarView'
 import { posterOf } from '../lib/status'
 import { ImportButton } from '../components/ImportDialog'
 import ShareProfile from '../components/ShareProfile'
-import type { Anime, ListEntry, ListPatch, Stats, User } from '../types'
+import type { Anime, ListEntry, ListPatch, Recommendation, Stats, User } from '../types'
 
-const TAB_IDS: TabId[] = ['gate', 'scrolls', 'path', 'search']
+const TAB_IDS: TabId[] = ['gate', 'scrolls', 'path', 'calendar', 'search']
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 interface Props {
@@ -97,6 +99,34 @@ export default function TrackerPage({ user, onLogout, onUserChange }: Props) {
       }
     })()
   }, [tab, discover.status])
+
+  // ── Календарь: грузим при каждом заходе на вкладку (расписание меняется) ──
+  const [calendar, setCalendar] = useState<CalendarState>({ status: 'idle', episodes: [] })
+  const [calendarNonce, setCalendarNonce] = useState(0)
+  useEffect(() => {
+    if (tab !== 'calendar') return
+    let cancelled = false
+    getCalendar()
+      .then((res) => !cancelled && setCalendar({ status: 'done', episodes: res.data.data }))
+      .catch(() => !cancelled && setCalendar((c) => ({ ...c, status: 'error' })))
+    return () => {
+      cancelled = true
+    }
+  }, [tab, calendarNonce])
+
+  // ── Рекомендации на «Вратах»: один раз, когда в свитках есть что-то любимое ──
+  const [recs, setRecs] = useState<{ items: Recommendation[]; seeds: string[] } | null>(null)
+  const hasFavourites = list.some((e) => (e.score ?? 0) >= 8 || (e.score === null && e.status === 'completed'))
+  useEffect(() => {
+    if (tab !== 'gate' || recs || !hasFavourites) return
+    let cancelled = false
+    getRecommendations()
+      .then((res) => !cancelled && setRecs({ items: res.data.data, seeds: res.data.seeds }))
+      .catch((err) => console.error('Failed to load recommendations:', err))
+    return () => {
+      cancelled = true
+    }
+  }, [tab, recs, hasFavourites])
 
   // ── Поиск: запускается от ?q= в адресе, до 3 попыток при 429/5xx ──
   const [retryNonce, setRetryNonce] = useState(0)
@@ -206,6 +236,7 @@ export default function TrackerPage({ user, onLogout, onUserChange }: Props) {
             {tab === 'gate' && (
               <GateView
                 discover={discover}
+                recommendations={recs}
                 onRetry={() => setDiscover((d) => ({ ...d, status: 'idle' }))}
                 inListIds={inListIds}
                 stampId={stampId}
@@ -223,6 +254,15 @@ export default function TrackerPage({ user, onLogout, onUserChange }: Props) {
             )}
             {tab === 'path' && (
               <PathView stats={stats} footer={<ShareProfile user={user} onUserChange={onUserChange} />} />
+            )}
+            {tab === 'calendar' && (
+              <CalendarView
+                calendar={calendar}
+                onRetry={() => {
+                  setCalendar({ status: 'idle', episodes: [] })
+                  setCalendarNonce((n) => n + 1)
+                }}
+              />
             )}
             {tab === 'search' && (
               <SearchView

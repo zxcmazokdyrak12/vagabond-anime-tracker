@@ -1786,3 +1786,83 @@ kbd {
   gap: 0.75rem 1.25rem;
   font-size: var(--step--1);
 }
+
+/* ── Календарь ──────────────────────────────────────────────── */
+.calendar {
+  list-style: none;
+  border-top: 1px solid var(--ink);
+}
+
+.calendar__day {
+  display: grid;
+  grid-template-columns: minmax(12rem, 16rem) 1fr;
+  gap: 1rem 2rem;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.calendar__date {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  align-self: start;
+}
+
+.calendar__kanji {
+  font-size: 3.25rem;
+}
+
+.calendar__title {
+  display: block;
+  font-size: var(--step-1);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.calendar__sub {
+  display: block;
+  font-size: var(--step--1);
+  color: var(--wash);
+}
+
+.calendar__episodes {
+  list-style: none;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.calendar__ep {
+  display: grid;
+  grid-template-columns: 3.25rem 2.75rem 1fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+.calendar__ep .ink-frame {
+  aspect-ratio: 2 / 3;
+}
+
+.calendar__time {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar__meta {
+  font-size: var(--step--1);
+  color: var(--wash);
+}
+
+.calendar__ep.is-aired .calendar__time {
+  color: var(--seal);
+}
+
+@media (max-width: 720px) {
+  .calendar__day {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Рекомендации — одна строка постеров покрупнее */
+.poster-grid--row {
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+}

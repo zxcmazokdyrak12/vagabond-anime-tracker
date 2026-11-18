@@ -10,6 +10,7 @@ const TABS: { id: TabId; glyph: string; label: string }[] = [
   { id: 'gate', glyph: '門', label: 'The gate' },
   { id: 'scrolls', glyph: '巻', label: 'My scrolls' },
   { id: 'path', glyph: '道', label: 'The path' },
+  { id: 'calendar', glyph: '暦', label: 'This week' },
 ]
 
 export function Wordmark() {
@@ -24,7 +25,7 @@ export function Wordmark() {
   )
 }
 
-export type TabId = 'gate' | 'scrolls' | 'path' | 'search'
+export type TabId = 'gate' | 'scrolls' | 'path' | 'calendar' | 'search'
 
 interface Props {
   user: User | null

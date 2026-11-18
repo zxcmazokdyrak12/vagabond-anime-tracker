@@ -7,7 +7,7 @@ import Stamp from '../../components/Stamp'
 import Enso from '../../components/Enso'
 import Notice from '../../components/Notice'
 import { posterOf } from '../../lib/status'
-import type { Anime } from '../../types'
+import type { Anime, Recommendation } from '../../types'
 
 export interface DiscoverState {
   status: 'idle' | 'done' | 'error'
@@ -140,7 +140,12 @@ export default function GateView({
   inListIds,
   stampId,
   onAdd,
-}: AddProps & { discover: DiscoverState; onRetry: () => void }) {
+  recommendations,
+}: AddProps & {
+  discover: DiscoverState
+  onRetry: () => void
+  recommendations?: { items: Recommendation[]; seeds: string[] } | null
+}) {
   if (discover.status === 'error') {
     return (
       <Notice
@@ -163,6 +168,30 @@ export default function GateView({
         stampId={stampId}
         onAdd={onAdd}
       />
+
+      {recommendations && recommendations.items.length > 0 && (
+        <section className="section" aria-labelledby="recs-head">
+          <h2 className="section-head" id="recs-head">
+            <span className="brush" aria-hidden="true">薦</span>
+            For you
+            <span className="section-head__aside">
+              Because you loved {recommendations.seeds.slice(0, 3).join(', ')}
+            </span>
+          </h2>
+          <ul className="poster-grid poster-grid--row">
+            {recommendations.items.slice(0, 6).map((anime) => (
+              <PosterCard
+                key={anime.mal_id}
+                anime={anime}
+                inList={inListIds.has(anime.mal_id)}
+                stamped={stampId === anime.mal_id}
+                onAdd={onAdd}
+                note={`Fans of ${anime.because.join(' and ')} liked it`}
+              />
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="gate-columns section">
         <section aria-labelledby="season-head">

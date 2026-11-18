@@ -9,6 +9,7 @@ import { authRouter } from './routes/auth.js'
 import { listRouter } from './routes/list.js'
 import { animeRouter } from './routes/anime.js'
 import { publicRouter } from './routes/public.js'
+import { discoverRouter } from './routes/discover.js'
 
 export interface AppDeps {
   db: Db
@@ -38,6 +39,7 @@ export function createApp({ db, config, http = axiosHttp, upstreamIntervalMs }: 
   app.use('/api/anime', animeRouter({ anilist, jikan }))
   app.use('/public', publicRouter({ db }))
   app.use('/', listRouter({ db, jwtSecret: config.jwtSecret, anilist }))
+  app.use('/', discoverRouter({ db, jwtSecret: config.jwtSecret, anilist }))
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'Not found' })

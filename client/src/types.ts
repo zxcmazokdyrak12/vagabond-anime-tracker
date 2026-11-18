@@ -108,3 +108,17 @@ export interface Episode {
 export interface Paged<T> {
   data: T[]
 }
+
+export interface CalendarEpisode {
+  anime_id: number
+  title: string
+  title_english: string | null
+  image: string | null
+  episode: number
+  episodes: number | null
+  airing_at: string
+  status: Status
+  watched_episodes: number
+}
+
+export type Recommendation = Anime & { because: string[] }

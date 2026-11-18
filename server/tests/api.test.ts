@@ -58,6 +58,54 @@ const upstream = fakeHttp([
           ? { status: 200, data: { data: { Media: FRIEREN } } }
           : { status: 404, data: { errors: [{ message: 'Not Found.' }] } }
       }
+      if (query.includes('notYetAired: true')) {
+        const now = Math.floor(Date.now() / 1000)
+        return {
+          status: 200,
+          data: {
+            data: {
+              Page: {
+                media: [
+                  {
+                    idMal: 52991, title: { romaji: 'Sousou no Frieren', english: 'Frieren' }, coverImage: { large: 'f.jpg' }, episodes: 28,
+                    airingSchedule: { nodes: [
+                      { episode: 8, airingAt: now + 3600 },
+                      { episode: 9, airingAt: now + 3600 + 7 * 86400 + 60 }, // за пределами недели
+                    ] },
+                  },
+                ],
+              },
+            },
+          },
+        }
+      }
+      if (query.includes('recommendations(sort')) {
+        const rec = (idMal: number, romaji: string, extra = {}) => ({
+          idMal, isAdult: false, format: 'TV', episodes: 12, averageScore: 80,
+          title: { romaji, english: null }, coverImage: { large: `${romaji}.jpg` }, ...extra,
+        })
+        return {
+          status: 200,
+          data: {
+            data: {
+              Page: {
+                media: [
+                  { idMal: 1, title: { romaji: 'Cowboy Bebop', english: 'Cowboy Bebop' }, recommendations: { nodes: [
+                    { rating: 300, mediaRecommendation: rec(205, 'Samurai Champloo') },
+                    { rating: 50, mediaRecommendation: rec(30, 'Evangelion') },
+                    { rating: 900, mediaRecommendation: rec(52991, 'Already owned') },
+                  ] } },
+                  { idMal: 5114, title: { romaji: 'FMA', english: 'Fullmetal Alchemist: Brotherhood' }, recommendations: { nodes: [
+                    { rating: 100, mediaRecommendation: rec(30, 'Evangelion') },
+                    { rating: 80, mediaRecommendation: rec(666, 'Adult', { isAdult: true }) },
+                    { rating: 70, mediaRecommendation: null },
+                  ] } },
+                ],
+              },
+            },
+          },
+        }
+      }
       if (query.includes('idMal_in')) {
         const ids = (variables as { ids: number[] }).ids
         return {
@@ -393,6 +441,34 @@ describe('public profiles', () => {
     expect(pub.body.list[0].notes).toBeUndefined()
 
     expect((await request(app).patch('/auth/me').set(auth).send({ is_public: 'yes' })).status).toBe(400)
+  })
+})
+
+describe('calendar and recommendations', () => {
+  it('lists episodes airing this week for titles I watch', async () => {
+    const { auth } = await signUp('rindo')
+    await request(app).post('/list').set(auth).send({ anime_id: 52991, title: 'Frieren', episodes: 28, status: 'watching' })
+    await request(app).patch('/list/52991').set(auth).send({ watched_episodes: 7 })
+
+    const res = await request(app).get('/calendar').set(auth)
+    expect(res.body.data).toEqual([
+      expect.objectContaining({ anime_id: 52991, episode: 8, status: 'watching', watched_episodes: 7, image: 'f.jpg' }),
+    ])
+  })
+
+  it('recommends what fans of my favourites liked, skipping what I have', async () => {
+    const { auth } = await signUp('osugi')
+    expect((await request(app).get('/recommendations').set(auth)).body).toEqual({ data: [], seeds: [] })
+
+    await request(app).post('/list').set(auth).send({ anime_id: 1, title: 'Cowboy Bebop', score: 10 })
+    await request(app).post('/list').set(auth).send({ anime_id: 5114, title: 'FMA: Brotherhood', score: 9 })
+    await request(app).post('/list').set(auth).send({ anime_id: 52991, title: 'Frieren', score: 6 })
+
+    const res = await request(app).get('/recommendations').set(auth)
+    expect(res.body.seeds).toEqual(['Cowboy Bebop', 'FMA: Brotherhood'])
+    // Evangelion советуют к двум любимым — он выше, хоть рейтинг каждой рекомендации ниже
+    expect(res.body.data.map((a: { mal_id: number }) => a.mal_id)).toEqual([30, 205])
+    expect(res.body.data[0].because).toEqual(['Cowboy Bebop', 'Fullmetal Alchemist: Brotherhood'])
   })
 })
 
