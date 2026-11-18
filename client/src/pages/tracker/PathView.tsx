@@ -4,6 +4,7 @@ import { STATUSES, STATUS_KEYS, plural } from '../../lib/status'
 import { pluralWord, useT } from '../../lib/i18n'
 import type { Stats } from '../../types'
 import type { ReactNode } from 'react'
+import InkArt from '../../components/InkArt'
 
 const MINUTES_PER_EPISODE = 24
 
@@ -24,8 +25,8 @@ export default function PathView({ stats, footer, owner }: Props) {
 
   if (total === 0) {
     return (
-      <div className="empty">
-        <span className="brush" aria-hidden="true">道</span>
+      <div className="empty empty--art">
+        <InkArt name="musashi-gaze" className="empty__art" />
         <div>
           <h1 className="page-title">{t('Your path starts with one title')}</h1>
           <p className="lede" style={{ marginBottom: '1.5rem' }}>

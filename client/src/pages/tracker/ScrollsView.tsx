@@ -6,6 +6,7 @@ import { STATUSES, STATUS_KEYS, plural } from '../../lib/status'
 import type { ListEntry, ListPatch, Status } from '../../types'
 import { SORTS, sortEntries, type SortKey } from '../../lib/sort'
 import { useT } from '../../lib/i18n'
+import InkArt from '../../components/InkArt'
 
 type OnUpdate = (animeId: number, patch: ListPatch) => void
 
@@ -246,8 +247,8 @@ export default function ScrollsView({ list, loaded, onUpdate, onDelete, importSl
 
   if (list.length === 0) {
     return (
-      <div className="empty">
-        <span className="brush" aria-hidden="true">空</span>
+      <div className="empty empty--art">
+        <InkArt name="musashi-prayer" className="empty__art" />
         <div>
           <h1 className="page-title">{t('Your scrolls are empty')}</h1>
           <p className="lede" style={{ marginBottom: '1.5rem' }}>

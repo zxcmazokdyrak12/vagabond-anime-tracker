@@ -7,6 +7,7 @@ import LangSwitch from '../components/LangSwitch'
 import { errorStatus } from '../api'
 import type { User } from '../types'
 import axios from 'axios'
+import InkArt from '../components/InkArt'
 
 type Mode = 'login' | 'register'
 type Field = 'username' | 'email' | 'password'
@@ -83,6 +84,7 @@ export default function AuthPage({ onLogin }: { onLogin: (user: User, token: str
         >
           {copy.glyph}
         </motion.span>
+        <InkArt name="musashi-field" className="auth__figure" />
         <p className="auth__caption">
           {t('A tracker for the anime you watch, drawn in ink after Takehiko Inoue’s Vagabond.')}
         </p>
