@@ -65,6 +65,8 @@ export interface Anime {
   aired?: { string?: string | null }
   trailer?: { embed_url?: string | null }
   theme?: { openings?: string[]; endings?: string[] }
+  /** Следующая серия онгоинга (AniList) */
+  next_airing?: { episode: number; at: string } | null
 }
 
 export interface Character {

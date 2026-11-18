@@ -6,20 +6,71 @@ import type { Db } from '../src/db.js'
 import { runMigrations } from '../src/migrate.js'
 import { JWT_SECRET, fakeHttp, freshDb } from './helpers.js'
 
-const ANILIST = [
-  { idMal: 52991, title: { romaji: 'Sousou no Frieren', english: 'Frieren', native: '葬送のフリーレン' }, coverImage: { large: 'f.jpg' }, episodes: 28, averageScore: 90 },
-  { idMal: null, title: { romaji: 'AniList-only', english: null, native: null }, coverImage: { large: null }, episodes: 1, averageScore: null },
-]
+const media = (idMal: number | null, romaji: string, extra: object = {}) => ({
+  id: 1000 + (idMal ?? 0),
+  idMal,
+  title: { romaji, english: null, native: null },
+  coverImage: { large: `${romaji}.jpg`, extraLarge: null },
+  description: 'An <i>elf</i> mage.<br><br>She outlives everyone&#039;s party.',
+  episodes: 28,
+  duration: 24,
+  averageScore: 90,
+  popularity: 500000,
+  seasonYear: 2023,
+  format: 'TV',
+  status: 'FINISHED',
+  source: 'MANGA',
+  genres: ['Adventure', 'Drama'],
+  studios: { nodes: [{ name: 'MADHOUSE' }] },
+  rankings: [{ rank: 1, type: 'RATED', allTime: true }],
+  trailer: { id: 'abc123', site: 'youtube' },
+  startDate: { year: 2023, month: 9, day: 29 },
+  endDate: { year: 2024, month: 3, day: 22 },
+  nextAiringEpisode: null,
+  ...extra,
+})
+
+const FRIEREN = media(52991, 'Sousou no Frieren', {
+  title: { romaji: 'Sousou no Frieren', english: 'Frieren', native: '葬送のフリーレン' },
+  characters: {
+    edges: [
+      { role: 'MAIN', node: { id: 1, name: { full: 'Frieren' }, image: { medium: 'f.png' } }, voiceActors: [{ name: { full: 'Atsumi Tanezaki' } }] },
+    ],
+  },
+  streamingEpisodes: [{ title: 'Episode 2 - It Didn’t Have to Be Magic...' }, { title: "Episode 1 - The Journey's End" }],
+  airingSchedule: { nodes: [{ episode: 1, airingAt: 1695945600 }] },
+})
 
 let db: Db
 let app: Express
 let anilistDown = false
 const upstream = fakeHttp([
-  [/anilist/, () => (anilistDown ? { status: 500, data: {} } : { status: 200, data: { data: { Page: { media: ANILIST } } } })],
+  [
+    /anilist/,
+    (_url, body) => {
+      if (anilistDown) return { status: 0, data: null }
+      const { query, variables } = body as { query: string; variables?: { idMal?: number } }
+      if (query.includes('Media(idMal')) {
+        return variables?.idMal === 52991
+          ? { status: 200, data: { data: { Media: FRIEREN } } }
+          : { status: 404, data: { errors: [{ message: 'Not Found.' }] } }
+      }
+      if (query.includes('$search')) {
+        return { status: 200, data: { data: { Page: { media: [FRIEREN, media(null, 'AniList-only')] } } } }
+      }
+      if (query.includes('SCORE_DESC')) {
+        return { status: 200, data: { data: { Page: { media: [FRIEREN, media(null, 'No MAL'), media(9253, 'Steins;Gate')] } } } }
+      }
+      if (query.includes('seasonYear')) {
+        return { status: 200, data: { data: { Page: { media: [media(59978, 'Season Show', { status: 'RELEASING' })] } } } }
+      }
+      return { status: 400, data: {} }
+    },
+  ],
   [/jikan.*\/anime\?q=/, () => ({ status: 200, data: { data: [{ mal_id: 1, title: 'From Jikan' }] } })],
-  [/jikan.*\/top\/anime/, () => ({ status: 200, data: { data: [{ mal_id: 52991 }] } })],
-  [/jikan.*\/anime\/52991\/full/, () => ({ status: 200, data: { data: { mal_id: 52991, title: 'Frieren' } } })],
-  [/jikan.*\/anime\/999999\/full/, () => ({ status: 404, data: {} })],
+  [/jikan.*\/top\/anime/, () => ({ status: 200, data: { data: [{ mal_id: 1, title: 'Jikan top' }] } })],
+  // Остальные запросы к Jikan — как на Render: соединение не устанавливается
+  [/jikan/, () => ({ status: 0, data: null })],
 ])
 
 const makeApp = (attempts = 1000) =>
@@ -27,7 +78,7 @@ const makeApp = (attempts = 1000) =>
     db,
     config: { jwtSecret: JWT_SECRET, clientOrigins: [], authAttemptsPer15Min: attempts },
     http: upstream.http,
-    jikanIntervalMs: 0,
+    upstreamIntervalMs: 0,
   })
 
 async function signUp(name: string) {
@@ -187,40 +238,83 @@ describe('anime list', () => {
 })
 
 describe('anime catalogue proxy', () => {
-  it('maps AniList results to MAL ids and drops titles without one', async () => {
+  it('maps search results to MAL ids and drops titles without one', async () => {
     const res = await request(app).get('/api/anime/search?q=frieren')
     expect(res.body.data).toEqual([
       expect.objectContaining({ mal_id: 52991, title: 'Sousou no Frieren', episodes: 28, score: 9 }),
     ])
   })
 
-  it('caches searches', async () => {
+  it('caches searches regardless of case', async () => {
     const before = upstream.calls.length
     await request(app).get('/api/anime/search?q=FRIEREN')
     expect(upstream.calls.length).toBe(before)
   })
 
-  it('falls back to Jikan when AniList is down', async () => {
-    anilistDown = true
-    const res = await request(app).get('/api/anime/search?q=bebop')
-    anilistDown = false
-    expect(res.body.data[0].title).toBe('From Jikan')
+  it('serves the top list from AniList in the Jikan format, ranked', async () => {
+    const res = await request(app).get('/api/anime/top')
+    expect(res.body.data.map((a: { mal_id: number; rank: number }) => [a.mal_id, a.rank])).toEqual([
+      [52991, 1],
+      [9253, 2],
+    ])
+    expect(res.body.data[0]).toMatchObject({
+      title_english: 'Frieren',
+      title_japanese: '葬送のフリーレン',
+      type: 'TV',
+      status: 'Finished Airing',
+      source: 'Manga',
+      synopsis: "An elf mage.\n\nShe outlives everyone's party.",
+      trailer: { embed_url: 'https://www.youtube-nocookie.com/embed/abc123' },
+      aired: { string: '29 Sep 2023 to 22 Mar 2024' },
+    })
   })
 
-  it('proxies and caches Jikan', async () => {
-    const first = await request(app).get('/api/anime/top')
-    const before = upstream.calls.length
-    const second = await request(app).get('/api/anime/top')
-    expect(second.body).toEqual(first.body)
-    expect(upstream.calls.length).toBe(before)
+  it('serves this season', async () => {
+    const res = await request(app).get('/api/anime/season')
+    expect(res.body.data).toEqual([expect.objectContaining({ mal_id: 59978, airing: true })])
+  })
 
-    expect((await request(app).get('/api/anime/52991')).body.data.title).toBe('Frieren')
+  it('serves a title, its characters and episodes from one cached AniList query', async () => {
+    const before = upstream.calls.length
+    const full = await request(app).get('/api/anime/52991')
+    const chars = await request(app).get('/api/anime/52991/characters')
+    const eps = await request(app).get('/api/anime/52991/episodes')
+    expect(upstream.calls.length - before).toBe(1)
+
+    expect(full.body.data).toMatchObject({ mal_id: 52991, rank: 1, members: 500000 })
+    expect(chars.body.data[0]).toMatchObject({
+      character: { name: 'Frieren' },
+      role: 'Main',
+      voice_actors: [{ person: { name: 'Atsumi Tanezaki' } }],
+    })
+    expect(eps.body.data).toEqual([
+      { mal_id: 1, title: "The Journey's End", aired: '2023-09-29T00:00:00.000Z' },
+      { mal_id: 2, title: 'It Didn’t Have to Be Magic...', aired: null },
+    ])
   })
 
   it('returns 404 for unknown titles and 400 for bad ids', async () => {
     expect((await request(app).get('/api/anime/999999')).status).toBe(404)
     expect((await request(app).get('/api/anime/abc')).status).toBe(400)
     expect((await request(app).get('/api/anime/1/reviews')).status).toBe(400)
+  })
+
+  it('falls back to Jikan when AniList is unreachable', async () => {
+    anilistDown = true
+    const fresh = makeApp() // без кеша
+    const search = await request(fresh).get('/api/anime/search?q=bebop')
+    const top = await request(fresh).get('/api/anime/top')
+    anilistDown = false
+    expect(search.body.data[0].title).toBe('From Jikan')
+    expect(top.body.data[0].title).toBe('Jikan top')
+  })
+
+  it('answers 502, not 500, when every source is down', async () => {
+    anilistDown = true
+    const res = await request(makeApp()).get('/api/anime/season')
+    anilistDown = false
+    expect(res.status).toBe(502)
+    expect(res.body.error).toBe('Anime catalogue unavailable')
   })
 })
 
