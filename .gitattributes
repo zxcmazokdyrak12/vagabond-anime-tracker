@@ -1,0 +1,10 @@
+# Единые переводы строк: в репозитории всегда LF, даже при коммитах с Windows
+* text=auto eol=lf
+
+# Бинарные файлы не трогаем
+*.png binary
+*.jpg binary
+*.svg text
+
+# Lock-файлы не учитываются в статистике языков и сворачиваются в диффах
+package-lock.json linguist-generated=true -diff
